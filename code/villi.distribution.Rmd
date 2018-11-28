@@ -37,7 +37,7 @@ png(filename="~/GitHub/Gut/output/villi.distribution.png",
 
 # create histogram
 hist <- hist(vh.cd, breaks = 50, col = "grey", las = 1, 
-             xlab = "Villi height : Crpt depth", main = NA, freq = F)
+             xlab = "Villi height : Crypt depth", main = NA, freq = F)
 
 # add kernel density
 lines(density(vh.cd, adjust = 2), col = "red", lwd = 1.5)
