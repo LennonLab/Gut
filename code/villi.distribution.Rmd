@@ -1,0 +1,52 @@
+---
+title: "Vill size distribution"
+author: "Jay T. Lennon"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+header-includes:
+   - \usepackage{array}
+output: pdf_document
+geometry: margin=2.54cm
+---
+
+# Overview
+Data from Murray et al. (2017) Gastroenterology (2017)152:787–798.e2. https://www.ncbi.nlm.nih.gov/pubmed/27864127 looking 1,345 patients with range of Celiac's disease. 
+Data not available in original paper, but Jack Syage from Immunogenex sent excel files. 
+Goal is to look at distribution of villi height to crypt depth where smaller values are symptomatic of disease.
+
+# Set working directory and load packages
+```{r}
+rm(list = ls())
+getwd()
+setwd("~/GitHub/Gut")
+require("bbmle")
+require("grid")
+require("png")
+```
+
+# Load data
+```{r}
+# load raw data
+data <- read.table("data/villi.celiac.txt", sep = "\t", header = TRUE)
+vh.cd <- na.omit(data$VH.CD)
+```
+
+# Make figure
+```{r}
+png(filename="~/GitHub/Gut/output/villi.distribution.png",
+     width = 900, height = 900, res = 96*2)
+
+# create histogram
+hist <- hist(vh.cd, breaks = 50, col = "grey", las = 1, 
+             xlab = "Villi height : Crpt depth", main = NA, freq = F)
+
+# add kernel density
+lines(density(vh.cd, adjust = 2), col = "red", lwd = 1.5)
+
+dev.off()
+graphics.off()
+
+img <- readPNG("~/GitHub/Gut/output/villi.distribution.png")
+grid.raster(img)
+```
+
+
