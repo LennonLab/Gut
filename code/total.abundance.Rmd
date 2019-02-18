@@ -1,0 +1,28 @@
+---
+title: "total.abundance"
+author: "Emmi Mueller"
+date: "February 18, 2019"
+output: pdf_document
+---
+
+```{r}
+rm(list = ls())
+setwd("~/GitHub/Gut/")
+```
+
+## Read in file in .csv format with columns day, abundance(10^7), and complexity
+
+
+```{r}
+abundance <- read.table("./data/20190218_0544_PilotAbundance.csv", header = TRUE, sep =",")
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r}
+plot(Abundance ~ Day + Complexity, abundance, type = "b", main = "Cell abundance from plating", col = abundance$Complexity, pch = 16, ylab = "Abundance ( *10^7 cells/mL)")
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
