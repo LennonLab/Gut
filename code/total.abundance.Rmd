@@ -7,14 +7,15 @@ output: pdf_document
 
 ```{r}
 rm(list = ls())
-setwd("~/GitHub/Gut/")
+require(ggplot2)
 ```
 
 ## Read in file in .csv format with columns day, abundance(10^7), and complexity
 
 
 ```{r}
-abundance <- read.table("./data/20190218_0544_PilotAbundance.csv", header = TRUE, sep =",")
+#abundance <- read.table("../data/20190218_0544_PilotAbundance.csv", header = TRUE, sep =",")
+abundance <- read.table("../data/20190219_0904_PilotAbundance.csv", header = TRUE, sep = ",")
 ```
 
 ## Including Plots
@@ -22,7 +23,7 @@ abundance <- read.table("./data/20190218_0544_PilotAbundance.csv", header = TRUE
 You can also embed plots, for example:
 
 ```{r}
-plot(Abundance ~ Day + Complexity, abundance, type = "b", main = "Cell abundance from plating", col = abundance$Complexity, pch = 16, ylab = "Abundance ( *10^7 cells/mL)")
+ggplot(abundance, aes(y = Abundance, x = Day, color = Complexity)) + geom_point() + geom_line() + ggtitle("Cell abundance from flow cytometry")+ ylab("Abundance(*10^8 cells/mL)")
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
