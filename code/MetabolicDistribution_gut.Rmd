@@ -1,0 +1,206 @@
+---
+title: "GCMetabolic"
+author: "Emmi Mueller"
+date: "May 8, 2019"
+output: html_document
+---
+
+```{r}
+rm(list = ls())
+getwd()
+install.packages("actuar")
+install.packages("fitdistrplus")
+library("BiocManager")
+BiocManager::valid()
+BiocManager::install()
+library("vegan")
+library("fitdistrplus")
+library("actuar")
+```
+
+```{r}
+RAC <- function(x = ""){
+  x = as.vector(x)
+  x.ab = x[x >0]
+  x.ab.ranked = x.ab[order(x.ab, decreasing = TRUE)]
+  return(x.ab.ranked)
+}
+```
+
+```{r}
+process <- function(x = "", channel = "", scale = ""){
+  if(scale == TRUE){
+    fcs <- flowCore::read.FCS(file = x, transformation = "scale")
+  }
+  else{
+    fcs <- flowCore::read.FCS(file = x)
+  }
+  flow <- flowCore::exprs(fcs)
+  RSG_H <- as.data.frame(flow[,channel])
+  rac <- RAC(x = RSG_H)
+  ranks <- as.vector(seq(1,length(rac)))
+  rac <- cbind(ranks, rac)
+  return(rac)
+}
+```
+
+```{r}
+CDist <- function(x = ""){
+  x <- as.vector(x)
+  sum <- sum(x)
+  rank <- 1
+  total <- length(x)
+  cdist <- as.vector((x[1]/sum)*100)
+  Per <- as.vector((rank/total) * 100)
+  print(length(x))
+  print(length(cdist))
+  for(num in x){
+    rank <- rank + 1
+    x <- x[-1]
+    current <- cdist[length(cdist)] + ((x[1]/sum)*100)
+    Per <- c(Per, ((rank/total) *100))
+    cdist <- c(cdist, current)
+  }
+  ranked <- cbind(cdist, Per)
+  return(ranked)
+
+}
+```
+
+```{r}
+rac_LR <- process("../data/FCS/20190506_EAM_GC_Day1/Day1_Pop_L_R.fcs", "BL1-H")
+rac_HR <- process("../data/FCS/20190506_EAM_GC_Day1/Day1_Pop_H_R.fcs", "BL1-H")
+rac_LR_2 <- process("../data/FCS/20190507_EAM_GC_Day2/Day2_Pop_L_R.fcs", "BL1-H")
+rac_HR_2 <- process("../data/FCS/20190507_EAM_GC_Day2/Day2_Pop_H_R.fcs", "BL1-H")
+rac_HR_3 <- process("../data/FCS/20190508_EAM_GC_Day3/Day3_Pop_H_R.fcs", "BL1-H")
+rac_LR_3 <- process("../data/FCS/20190508_EAM_GC_Day3/Day3_Pop_L_R.fcs", "BL1-H")
+Cdist_HR_3 <- CDist(rac_HR_3[,2])
+Cdist_LR_3 <- CDist(rac_LR_3[,2])
+Cdist_HR_2 <- CDist(rac_HR_2[,2])
+Cdist_LR_2 <- CDist(rac_LR_2[,2])
+Cdist_LR <- CDist(rac_LR[,2])
+Cdist_HR <- CDist(rac_HR[,2])
+
+#RAC and CDF of Day 1 LR and HR
+par(mar = c(5,5,4,1)+0.1, mfrow = c(1,2))
+ 
+plot(rac_LR[,1], log(rac_LR[,2]), type = 'l', axes = F, xlab = "Rank in activity", ylab = "", las = 1, cex.lab = 1.4, cex.axis = 1.25)
+mtext("log(RSG-H value)", side = 2, line = 3, cex = 1.4)
+points(rac_HR[,1], log(rac_HR[,2]), type = 'l', col = "red")
+
+box()
+axis(side = 1, labels = T, cex.axis = 1.25)
+axis(side = 2, las = 1, cex.axis = 1.25)
+
+plot(Cdist_LR[,2],Cdist_LR[,1], axes = F, xlab = "", ylab = "", las = 1, cex.lab = 1.4, cex.axis = 1.25, type = 'l')
+mtext("% of rank-ordered cells \n contributing to activity", side = 1, line = 4, cex = 1.4)
+mtext("Cumulative % RSG activity", side = 2, line = 3, cex = 1.4)
+points(Cdist_HR[,2], Cdist_HR[,1], type = 'l', col = "red")
+
+box()
+axis(side = 1, labels = T, cex.axis = 1.25)
+axis(side = 2, las = 1, cex.axis = 1.25)
+
+#RAC and CDF of Day 3 LR and HR
+par(mar = c(5,5,4,1)+0.1, mfrow = c(1,2))
+ 
+plot(rac_LR_3[,1], log(rac_LR_3[,2]), type = 'l', axes = F, xlab = "Rank in activity", ylab = "", las = 1, cex.lab = 1.4, cex.axis = 1.25)
+mtext("log(RSG-H value)", side = 2, line = 3, cex = 1.4)
+points(rac_HR_3[,1], log(rac_HR_3[,2]), type = 'l', col = "red")
+
+box()
+axis(side = 1, labels = T, cex.axis = 1.25)
+axis(side = 2, las = 1, cex.axis = 1.25)
+
+plot(Cdist_LR_3[,2],Cdist_LR_3[,1], axes = F, xlab = "", ylab = "", las = 1, cex.lab = 1.4, cex.axis = 1.25, type = 'l')
+mtext("% of rank-ordered cells \n contributing to activity", side = 1, line = 4, cex = 1.4)
+mtext("Cumulative % RSG activity", side = 2, line = 3, cex = 1.4)
+points(Cdist_HR_3[,2], Cdist_HR_3[,1], type = 'l', col = "red")
+
+box()
+axis(side = 1, labels = T, cex.axis = 1.25)
+axis(side = 2, las = 1, cex.axis = 1.25)
+
+#RAC and CDF of HR by Day
+par(mar = c(5,5,4,1)+0.1, mfrow = c(1,2))
+ 
+plot(rac_HR_3[,1], log(rac_HR_3[,2]), type = 'l', axes = F, xlab = "Rank in activity", ylab = "", las = 1, cex.lab = 1.4, cex.axis = 1.25, col = "yellow")
+mtext("log(RSG-H value)", side = 2, line = 3, cex = 1.4)
+points(rac_HR[,1], log(rac_HR[,2]), type = 'l', col = "blue")
+points(rac_HR_2[,1], log(rac_HR_2[,2]), type = 'l', col = "green")
+
+box()
+axis(side = 1, labels = T, cex.axis = 1.25)
+axis(side = 2, las = 1, cex.axis = 1.25)
+
+plot(Cdist_HR[,2],Cdist_HR[,1], axes = F, xlab = "", ylab = "", las = 1, cex.lab = 1.4, cex.axis = 1.25, type = 'l', col = "blue")
+mtext("% of rank-ordered cells \n contributing to activity", side = 1, line = 4, cex = 1.4)
+mtext("Cumulative % RSG activity", side = 2, line = 3, cex = 1.4)
+points(Cdist_HR_3[,2], Cdist_HR_3[,1], type = 'l', col = "yellow")
+points(Cdist_HR_2[,2], Cdist_HR_2[,1], type = 'l', col = "green")
+legend(60,30, legend = c("Day 1", "Day 2","Day 3"), col = c("blue","green", "yellow"), pch = 20)
+
+box()
+axis(side = 1, labels = T, cex.axis = 1.25)
+axis(side = 2, las = 1, cex.axis = 1.25)
+
+#RAC and CDF of LR by Day
+par(mar = c(5,5,4,1)+0.1, mfrow = c(1,2))
+ 
+plot(rac_LR_3[,1], log(rac_LR_3[,2]), type = 'l', axes = F, xlab = "Rank in activity", ylab = "", las = 1, cex.lab = 1.4, cex.axis = 1.25, col = "yellow")
+mtext("log(RSG-H value)", side = 2, line = 3, cex = 1.4)
+points(rac_LR[,1], log(rac_LR[,2]), type = 'l', col = "blue")
+points(rac_LR_2[,1], log(rac_LR_2[,2]), type = 'l', col = "green")
+
+box()
+axis(side = 1, labels = T, cex.axis = 1.25)
+axis(side = 2, las = 1, cex.axis = 1.25)
+
+plot(Cdist_LR[,2],Cdist_LR[,1], axes = F, xlab = "", ylab = "", las = 1, cex.lab = 1.4, cex.axis = 1.25, type = 'l', col = "blue")
+mtext("% of rank-ordered cells \n contributing to activity", side = 1, line = 4, cex = 1.4)
+mtext("Cumulative % RSG activity", side = 2, line = 3, cex = 1.4)
+points(Cdist_LR_3[,2], Cdist_LR_3[,1], type = 'l', col = "yellow")
+points(Cdist_LR_2[,2], Cdist_LR_2[,1], type = 'l', col = "green")
+legend(60,30, legend = c("Day 1", "Day 2","Day 3"), col = c("blue","green", "yellow"), pch = 20)
+
+box()
+axis(side = 1, labels = T, cex.axis = 1.25)
+axis(side = 2, las = 1, cex.axis = 1.25)
+
+#RAC and CDF - LR Day 3
+par(mar = c(5,5,4,1)+0.1, mfrow = c(1,2))
+ 
+plot(rac_LR_3[,1], log(rac_LR_3[,2]), type = 'l', axes = F, xlab = "Rank in activity", ylab = "", las = 1, cex.lab = 1.4, cex.axis = 1.25, col = "red")
+mtext("log(RSG-H value)", side = 2, line = 3, cex = 1.4)
+
+box()
+axis(side = 1, labels = T, cex.axis = 1.25)
+axis(side = 2, las = 1, cex.axis = 1.25)
+
+plot(Cdist_LR_3[,2],Cdist_LR_3[,1], axes = F, xlab = "", ylab = "", las = 1, cex.lab = 1.4, cex.axis = 1.25, type = 'l', col = "red")
+mtext("% of rank-ordered cells \n contributing to activity", side = 1, line = 4, cex = 1.4)
+mtext("Cumulative % RSG activity", side = 2, line = 3, cex = 1.4)
+
+box()
+axis(side = 1, labels = T, cex.axis = 1.25)
+axis(side = 2, las = 1, cex.axis = 1.25)
+
+
+pareto_LR_3 <- fitdist(rac_LR_3[,2], "pareto", start = list(shape = 0.1, scale = 10))
+lognorm_LR_3 <- fitdist(rac_LR_3[,2], "lnorm")
+plot(lognorm_LR_3)
+points(pareto_LR_3)
+plot(rac_LR_3[,1], log(rac_LR_3[,2]))
+hist(rac_LR_3[,2], breaks = 50)
+points(dlnorm(x = rac_LR_3[,1], meanlog = lognorm_LR_3$estimate["meanlog"], sdlog = lognorm_LR_3$estimate["sdlog"]), col = "red")
+plot(ppareto(q =rac_LR_3[,1],shape = pareto_LR_3$estimate["shape"], scale = pareto_LR_3$estimate["scale"]), col = "red")
+cdfcomp(list(pareto_LR_3, lognorm_LR_3), fitcol = c("red","blue"), xlim = c(0, 4e+05), ylab = "", xlab = "", datapch = 19,xlogscale = FALSE, ylogscale = FALSE, main = "Low Complexity Reactor - Day 3 Empirical and Fitted CDFs", do.points = TRUE)
+mtext("Number of ranked cells contributing to activity", side = 1, line = 3, cex = 1.4)
+mtext("Cumulative Distribution Function", side = 2, line =3, cex = 1.4)
+```
+
+```{r}
+Day3_LR_fits <- as.data.frame(t(rac_LR_3[,2]))
+Day3_LR_RACfit <- radfit(Day3_LR_fits)
+plot(Day3_LR_RACfit, las=1, cex.lab = 1.4, cex.axis = 1.25)
+```
