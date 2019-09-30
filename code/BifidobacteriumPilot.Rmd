@@ -1,0 +1,215 @@
+---
+title: "Probiotic pilot"
+author: "Roy Moger-Reischer and Jay T. Lennon"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+header-includes:
+  - \usepackage{array}
+output: pdf_document
+geometry: margin=2.54cm
+---
+
+Overview: pilot experiment with Bifidobacterium thermophilus on inulin
+with degrees of polymerization (DP)
+  
+# Setup Work Environment
+```{r, results='hide', warning=FALSE, message=FALSE}
+rm(list=ls())
+getwd()
+setwd("~/GitHub/Gut/")
+
+# Require and/or install packages 
+package.list <- c('plyr', 'grid', 'png', 'ggplot2', 'tidyverse') 
+for (package in package.list) {
+  if (!require(package, character.only=T, quietly=T)) { 
+    install.packages(package)
+    library(package, character.only=T)
+  } }
+
+sem <- function(x, ...){sd(x, na.rm = TRUE)/sqrt(length(na.omit(x)))}
+
+# Load t-test custom functions 
+ttest <- function(reg, coefnum, val){
+  co <- coef(summary(reg))
+  tstat <- (co[coefnum,1]-val)/co[coefnum,2]
+  pstat <- 2 * pt(abs(tstat), reg$df.residual, lower.tail = FALSE)
+  return(list = c(t = tstat, df = reg$df.residual, p =  pstat))
+}
+```
+
+# Load data 
+```{r}
+data <- read.table("~/GitHub/Gut/data/inulin/Bt_pilot.txt", sep="\t", header=TRUE)
+```
+
+# Calculate means, sem, and sample size by resource type
+```{r}
+carbon.means <-aggregate(OD600 ~ carbon, data = data, FUN = mean) 
+carbon.n <-aggregate(OD600 ~ carbon, data = data, FUN = length) 
+carbon.sem <-aggregate(OD600 ~ carbon, data = data, FUN = sem) 
+carbon.95.LL <- aggregate(OD600 ~ carbon, data = data,
+          FUN = function(x) t.test(x)$conf.int[1])
+carbon.95.UL <- aggregate(OD600 ~ carbon, data = data,
+          FUN = function(x) t.test(x)$conf.int[2])
+
+# Make table of proportion eDNA by environment
+carbon.table.a <- data.frame(carbon.means, carbon.sem[ ,2], carbon.n[ ,2], 
+                           carbon.95.LL[,2], carbon.95.UL[,2])
+colnames(carbon.table.a) <- c("carbon", "mean", "sem", "n", "95LL", "95UL")
+
+# Sort table by carbon type from smallest to largest DP
+carbon.table <- carbon.table.a[order(factor(carbon.table.a$carbon,levels=c(c("gluc", "kest", "CLR", "TEX23", "sensus")))),]
+```
+
+# ANOVA
+```{r}
+carbon.aov <- aov(OD600 ~ carbon, data = data)
+summary(carbon.aov)
+TukeyHSD(carbon.aov)
+```
+
+# Make scatter plot with error bars by carbon type with individual data points
+```{r}
+# carbon data for plotting
+carbon.glucose <- data[ which(data$carbon == "gluc"),]
+carbon.kestose <- data[ which(data$carbon == "kest"),]
+carbon.CLR <- data[ which(data$carbon == "CLR"),]
+carbon.TEX <- data[ which(data$carbon == "TEX23"),]
+carbon.sensus <- data[ which(data$carbon == "sensus"),]
+
+png(filename="~/GitHub/Gut/output/Bifido.all.carbon.png",
+    width = 800, height = 800, res = 96*2)
+
+par(mar = c(4, 5, 1, 1))
+
+# start with glucose
+all.carbon <- plot(jitter(rep(1, length(carbon.glucose$OD600)), amount = 0.1),
+      carbon.glucose$OD600, ylim = c(-0.1, 7), xlim = c(0.5, 5.5), pch = 21, 
+      col = "lightgrey", bg = "lightgrey", lwd = 2, cex = 1.7, yaxt = "n", 
+      xaxt = "n", cex.lab = 2, cex.axis = 1.5,las = 1, ylab = "", xlab = "")
+      box(lwd = 2)
+      
+# add kestose      
+points(jitter(rep(2, length(carbon.kestose$OD600)), amount = 0.1), carbon.kestose$OD600, 
+       pch = 21, bg = "lightgrey", col = "lightgrey", lwd = 2, cex = 1.7)
+
+# add CLR
+points(jitter(rep(3, length(carbon.CLR$OD600)), amount = 0.1), carbon.CLR$OD600, pch = 21, 
+       bg = "lightgrey", col = "lightgrey", lwd = 2, cex = 1.7)
+
+# add TEX23
+points(jitter(rep(4, length(carbon.TEX$OD600)), amount = 0.1),carbon.TEX$OD600, 
+       pch = 21, bg = "lightgrey", col = "lightgrey", lwd = 2, cex = 1.7) 
+
+# add sensus
+points(jitter(rep(5, length(carbon.sensus$OD600)), amount = 0.1),carbon.sensus$OD600, 
+       pch = 21, bg = "lightgrey", col = "lightgrey", lwd = 2, cex = 1.7) 
+
+points(1, mean(carbon.glucose$OD600), pch = 21, col = "black", 
+       bg = "NA", lwd = 2, cex = 2.5) 
+points(2, mean(carbon.kestose$OD600), pch = 21, col = "black", 
+       bg = "NA", lwd = 2, cex = 2.5)  
+points(3, mean(carbon.CLR$OD600), pch = 21, col = "black", 
+       bg = "NA", lwd = 2, cex = 2.5) 
+points(4, mean(carbon.TEX$OD600), pch = 21, col = "black", 
+       bg = "NA", lwd = 2, cex = 2.5) 
+points(5, mean(carbon.sensus$OD600), pch = 21, col = "black", 
+       bg = "NA", lwd = 2, cex = 2.5) 
+
+mtext(expression('Bacterial Biomass (OD600)'), side = 2,
+      outer = FALSE, cex = 1.5, line = 3, adj = 0.5)
+
+# Major Axes
+axis(side = 2, lwd.ticks = 2, cex.axis = 1.25, las = 1,
+     labels = c("0", "2", "4", "6"), at = c(0.0, 2, 4, 6))
+
+axis(side = 4, lwd.ticks = 2, cex.axis = 1.5, las = 1,
+     at=c(0, 2, 4, 6), labels = F, tck = -0.02)
+
+axis(side = 1, lwd.ticks = 2, cex.axis = 0.9, las = 1,
+     labels = c("Glu", "Kest", "CLR", "TEX", "SENS"), at = c(1, 2, 3, 4, 5))
+
+axis(side = 3, lwd.ticks = 2, cex.axis = 1.5, las = 1,
+     at = c(1, 2, 3, 4, 5), labels = F, tck = -0.02)
+
+arrows(x0 = c(1,2,3,4,5), y0 = carbon.table$mean, y1 = carbon.table$`95LL`, angle = 90,
+       length = 0.1, lwd = 2)
+
+arrows(x0 = c(1,2,3,4,5), y0 = carbon.table$mean, y1 = carbon.table$`95UL`, angle = 90,
+       length=0.1, lwd = 2)
+
+mtext(text = expression(italic("P")~" < 0.0001") , side =3, line = -2, adj = 0.925, col="black", cex=1.5)
+
+# Close Plot Device
+dev.off()
+graphics.off()
+
+# Show Plot
+img <- readPNG("~/GitHub/Gut/output/Bifido.all.carbon.png")
+grid.raster(img)
+```
+
+# Make scatter plot with error bars for CLR and TEX
+```{r}
+png(filename="~/GitHub/Gut/output/Bifido.low-high.carbon.png",
+    width = 800, height = 800, res = 96*2)
+
+par(mar = c(4, 5, 1, 1))
+
+# start with CLR
+all.carbon <- plot(jitter(rep(1, length(carbon.CLR$OD600)), amount = 0.1),
+      carbon.CLR$OD600, ylim = c(-0.1, 7), xlim = c(0.5, 2.5), pch = 21, 
+      col = "lightgrey", bg = "lightgrey", lwd = 2, cex = 1.7, yaxt = "n", 
+      xaxt = "n", cex.lab = 2, cex.axis = 1.5,las = 1, ylab = "", xlab = "")
+      box(lwd = 2)
+
+# add TEX23
+points(jitter(rep(2, length(carbon.TEX$OD600)), amount = 0.1),carbon.TEX$OD600, 
+       pch = 21, bg = "lightgrey", col = "lightgrey", lwd = 2, cex = 1.7) 
+
+points(1, mean(carbon.CLR$OD600), pch = 21, col = "black", 
+       bg = "NA", lwd = 2, cex = 2.5) 
+points(2, mean(carbon.TEX$OD600), pch = 21, col = "black", 
+       bg = "NA", lwd = 2, cex = 2.5) 
+
+mtext(expression('Bacterial Biomass (OD600)'), side = 2,
+      outer = FALSE, cex = 1.5, line = 2.7, adj = 0.5)
+
+mtext(expression('Inulin Size (DP)'), side = 1,
+      outer = FALSE, cex = 1.5, line = 3, adj = 0.5)
+
+# Major Axes
+axis(side = 2, lwd.ticks = 2, cex.axis = 1.25, las = 1,
+     labels = c("0", "2", "4", "6"), at = c(0.0, 2, 4, 6))
+
+axis(side = 4, lwd.ticks = 2, cex.axis = 1.5, las = 1,
+     at=c(0, 2, 4, 6), labels = F, tck = -0.02)
+
+axis(side = 1, lwd.ticks = 2, cex.axis = 0.9, las = 1,
+     labels = c("Low", "High"), at = c(1, 2))
+
+axis(side = 3, lwd.ticks = 2, cex.axis = 1.5, las = 1,
+     at = c(1, 2), labels = F, tck = -0.02)
+
+arrows(x0 = c(1,2), y0 = carbon.table$mean[c(3,4)], y1 = carbon.table$`95LL`[c(3,4)], 
+       angle = 90,length = 0.1, lwd = 2)
+
+arrows(x0 = c(1,2), y0 = carbon.table$mean[c(3,4)], y1 = carbon.table$`95UL`[c(3,4)], 
+       angle = 90, length=0.1, lwd = 2)
+
+mtext(text = expression(italic("P")~" < 0.0001") , side =3, line = -2, adj = 0.925, col="black", cex=1.5)
+
+# Close Plot Device
+dev.off()
+graphics.off()
+
+# Show Plot
+img <- readPNG("~/GitHub/Gut/output/Bifido.low-high.carbon.png")
+grid.raster(img)
+```
+
+# t-test
+```{r}
+low.high.carbon <- rbind(carbon.CLR, carbon.TEX)
+carbon.ttest <- t.test(OD600 ~ carbon, data = low.high.carbon)
+carbon.ttest
+```
