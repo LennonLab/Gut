@@ -42,7 +42,7 @@ data <- read.csv("~/GitHub/Gut/data/Oxygen_Pilot_20190926.csv", header = TRUE, s
 #Calculate means, sem, and sample size by resource type
 ```{r}
 # Media type separated and cleaned
-media <- data[which(data$Oxygen == "Medium"),]
+media <- data[which(data$Oxygen == "LB"),]
 spent <- data[which(data$Oxygen == "Spent"),]
 spent <- spent[!is.na(spent$Concentration),]
 
@@ -102,10 +102,10 @@ axis(side = 1, lwd.ticks = 2, cex.axis = 0.9, las = 1,
 axis(side = 3, lwd.ticks = 2, cex.axis = 1.5, las = 1,
      at = c(1, 2), labels = F, tck = -0.02)
 
-arrows(x0 = c(1), y0 = oxygen.table$mean, y1 = oxygen.table$`95LL`, angle = 90,
+arrows(x0 = c(2, 1), y0 = oxygen.table$mean, y1 = oxygen.table$`95LL`, angle = 90,
        length = 0.1, lwd = 2)
 
-arrows(x0 = c(1), y0 = oxygen.table$mean, y1 = oxygen.table$`95UL`, angle = 90,
+arrows(x0 = c(2, 1), y0 = oxygen.table$mean, y1 = oxygen.table$`95UL`, angle = 90,
        length=0.1, lwd = 2)
 
 mtext(expression('Oxygen Concentration (mg/L)'), side = 2,
