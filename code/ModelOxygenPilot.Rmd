@@ -1,0 +1,121 @@
+---
+title: "Gut Model Pilot"
+author: "Emmi Mueller and Jay T. Lennon"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+header-includes:
+  - \usepackage{array}
+output: pdf_document
+geometry: margin = 2.54cm
+---
+Overview: Pilot experiment with gut model 
+
+#Setup work environment
+```{r, results = 'hide', warning=FALSE, message=FALSE}
+rm(list=ls())
+getwd()
+setwd("~/GitHub/Gut/")
+
+package.list <- c('plyr', 'grid', 'png', 'ggplot2', 'tidyverse') 
+for (package in package.list) {
+  if (!require(package, character.only=T, quietly=T)) { 
+    install.packages(package)
+    library(package, character.only=T)
+  } }
+
+sem <- function(x, ...){sd(x, na.rm = TRUE)/sqrt(length(na.omit(x)))}
+
+# Load t-test custom functions 
+ttest <- function(reg, coefnum, val){
+  co <- coef(summary(reg))
+  tstat <- (co[coefnum,1]-val)/co[coefnum,2]
+  pstat <- 2 * pt(abs(tstat), reg$df.residual, lower.tail = FALSE)
+  return(list = c(t = tstat, df = reg$df.residual, p =  pstat))
+}
+```
+
+#Load data
+```{r}
+data <- read.csv("~/GitHub/Gut/data/Oxygen_Pilot_20190926.csv", header = TRUE, sep = ",")
+```
+
+
+#Calculate means, sem, and sample size by resource type
+```{r}
+# Media type separated and cleaned
+media <- data[which(data$Oxygen == "Medium"),]
+spent <- data[which(data$Oxygen == "Spent"),]
+spent <- spent[!is.na(spent$Concentration),]
+
+oxygen.means <-aggregate(Concentration ~Oxygen, data = data, FUN = mean) 
+oxygen.n <-aggregate(Concentration ~Oxygen, data = data, FUN = length) 
+oxygen.sem <-aggregate(Concentration ~Oxygen, data = data, FUN = sem) 
+oxygen.95.LL <- aggregate(Concentration ~Oxygen, data = data,
+          FUN = function(x) t.test(x)$conf.int[1])
+oxygen.95.UL <- aggregate(Concentration ~Oxygen, data = data,
+          FUN = function(x) t.test(x)$conf.int[2])
+
+# Make table=
+oxygen.table.a <- data.frame(oxygen.means, oxygen.sem[ ,2], oxygen.n[ ,2], 
+                           oxygen.95.LL[,2], oxygen.95.UL[,2])
+colnames(oxygen.table.a) <- c("oxygen", "mean", "sem", "n", "95LL", "95UL")
+
+# Sort table by carbon type from smallest to largest DP
+oxygen.table <- oxygen.table.a[order(factor(oxygen.table.a$oxygen,levels=c(c("Spent", "Medium")))),]
+```
+
+#Make scatter plot with error bars for oxygen levels
+```{r}
+
+
+png(filename="~/GitHub/Gut/output/Oxygen.png",
+    width = 800, height = 800, res = 96*2)
+
+par(mar = c(4, 5, 1, 1))
+
+# start with media
+all.oxygen <- plot(jitter(rep(1, length(media$Concentration)), amount = 0.1),
+      media$Concentration, ylim = c(-0.1, 10), xlim = c(0.5, 2.5), pch = 21, 
+      col = "lightgrey", bg = "lightgrey", lwd = 2, cex = 1.7, yaxt = "n", 
+      xaxt = "n", cex.lab = 2, cex.axis = 1.5,las = 1, ylab = "", xlab = "")
+      box(lwd = 2)
+      
+# add spent      
+points(jitter(rep(2, length(spent$Concentration)), amount = 0.1), spent$Concentration, 
+       pch = 21, bg = "lightgrey", col = "lightgrey", lwd = 2, cex = 1.7)
+
+#add points
+points(1, mean(media$Concentration), pch = 21, col = "black", 
+       bg = "NA", lwd = 2, cex = 2.5) 
+points(2, mean(spent$Concentration), pch = 21, col = "black", 
+       bg = "NA", lwd = 2, cex = 2.5)
+
+#major axes
+axis(side = 2, lwd.ticks = 2, cex.axis = 1.25, las = 1,
+  labels = c("0", "2", "4", "6", "8", "10"), at = c(0.0, 2, 4, 6, 8, 10))
+
+axis(side = 4, lwd.ticks = 2, cex.axis = 1.5, las = 1,
+     at=c(0, 2, 4, 6, 8, 10), labels = F, tck = -0.02)
+
+axis(side = 1, lwd.ticks = 2, cex.axis = 0.9, las = 1,
+     labels = c("Pre-Gut\nMedium", "Gut\nMedium"), at = c(1, 2))
+
+axis(side = 3, lwd.ticks = 2, cex.axis = 1.5, las = 1,
+     at = c(1, 2), labels = F, tck = -0.02)
+
+arrows(x0 = c(1), y0 = oxygen.table$mean, y1 = oxygen.table$`95LL`, angle = 90,
+       length = 0.1, lwd = 2)
+
+arrows(x0 = c(1), y0 = oxygen.table$mean, y1 = oxygen.table$`95UL`, angle = 90,
+       length=0.1, lwd = 2)
+
+mtext(expression('Oxygen Concentration (mg/L)'), side = 2,
+      outer = FALSE, cex = 1.5, line = 3, adj = 0.5)
+
+# Close Plot Device
+dev.off()
+graphics.off()
+
+# Show Plot
+img <- readPNG("~/GitHub/Gut/output/Oxygen.png")
+grid.raster(img)
+```
