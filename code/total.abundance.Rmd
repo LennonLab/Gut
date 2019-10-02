@@ -7,6 +7,8 @@ output: pdf_document
 
 ```{r}
 rm(list = ls())
+install.packages(ggplot2)
+library("ggplot2")
 require(ggplot2)
 ```
 
@@ -24,7 +26,6 @@ abundance$log <- log10(abundance$Abundance)
 You can also embed plots, for example:
 
 ```{r}
-jpeg("../output/Pilot_abundance.jpeg") 
 plot(log10(abundance$Abundance[abundance$Complexity=="H"]) ~ abundance$Day[abundance$Complexity=="H"], col = "black", ylim= c(6,10), type = "b", pch = 16, xlab = "", ylab = "", axes = FALSE, cex = 1.2)
 axis(2, at= c(6,7,8,9,10), labels = c(expression(paste("10"^"6")),expression(paste("10"^"7")), expression(paste("10"^"8")),expression(paste("10"^"9")), expression(paste("10"^"10"))), las = 2)
 axis(1, at= abundance$Day, labels = ((abundance$Day)*24))
@@ -33,5 +34,4 @@ mtext("Abundance (cells/mL)", side = 2, line = 3, cex = 1.4)
 mtext("Time (hrs)", side = 1, line = 3, cex = 1.4)
 legend(5,7, legend = c("Low complexity", "High complexity"), col = c("red", "black"), pch = 16, cex = 1.2)
 box()
-dev.off()
 ```
