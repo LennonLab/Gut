@@ -1,0 +1,93 @@
+---
+title: "Probiotic pilot"
+author: "Roy Moger-Reischer and Jay T. Lennon"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+header-includes:
+  - \usepackage{array}
+output: pdf_document
+geometry: margin=2.54cm
+---
+
+Overview: pilot experiment with Bifidobacterium thermophilus on inulin
+with degrees of polymerization (DP)
+  
+# Setup Work Environment
+```{r, results='hide', warning=FALSE, message=FALSE}
+rm(list=ls())
+getwd()
+setwd("C:\\Users\\rmoge\\GitHub\\Gut\\code")
+
+# Require and/or install packages 
+package.list <- c('plyr', 'grid', 'png', 'ggplot2', 'tidyverse') 
+for (package in package.list) {
+  if (!require(package, character.only=T, quietly=T)) { 
+    install.packages(package)
+    library(package, character.only=T)
+  } }
+
+sem <- function(x, ...){sd(x, na.rm = TRUE)/sqrt(length(na.omit(x)))}
+
+# Load t-test custom functions 
+ttest <- function(reg, coefnum, val){
+  co <- coef(summary(reg))
+  tstat <- (co[coefnum,1]-val)/co[coefnum,2]
+  pstat <- 2 * pt(abs(tstat), reg$df.residual, lower.tail = FALSE)
+  return(list = c(t = tstat, df = reg$df.residual, p =  pstat))
+}
+```
+
+# Load data 
+```{r}
+data <- read.csv("C:\\Users\\rmoge\\GitHub\\Gut\\data\\inulin\\cases_B.animalis.csv")
+datac <- read.csv("C:\\Users\\rmoge\\GitHub\\Gut\\data\\inulin\\cases_B.animalis_cultures.csv")
+'''
+data <- data %>% mutate (carbon=replace(carbon, carbon == "CLR", "CLR (DP 7-9)"))
+data <- data %>% mutate (carbon=replace(carbon, carbon == "TEX23", "Pure TEX (DP >23)"))
+data <- data %>% mutate (carbon=replace(carbon, carbon == "kest", "kestose (DP 3)"))
+data$Complete.name<-factor(data$Complete.name, levels=c("Glucose, culture", "CLR (DP 7-9)", "Pure TEX (DP >23)"))'''
+```
+
+# Calculate means, sem, and sample size by resource type
+```{r}
+carbon.means <-aggregate(OD600 ~ carbon, data = data, FUN = mean) 
+carbon.n <-aggregate(OD600 ~ carbon, data = data, FUN = length) 
+carbon.sem <-aggregate(OD600 ~ carbon, data = data, FUN = sem) 
+carbon.95.LL <- aggregate(OD600 ~ carbon, data = data,
+          FUN = function(x) t.test(x)$conf.int[1])
+carbon.95.UL <- aggregate(OD600 ~ carbon, data = data,
+          FUN = function(x) t.test(x)$conf.int[2])
+
+# Make table of proportion eDNA by environment
+carbon.table.a <- data.frame(carbon.means, carbon.sem[ ,2], carbon.n[ ,2], 
+                           carbon.95.LL[,2], carbon.95.UL[,2])
+colnames(carbon.table.a) <- c("carbon", "mean", "sem", "n", "95LL", "95UL")
+
+# Sort table by carbon type from smallest to largest DP
+carbon.table <- carbon.table.a[order(factor(carbon.table.a$carbon,levels=c(c("gluc", "kest", "CLR", "TEX23", "sensus")))),]
+```
+
+# ANOVA
+```{r}
+carbon.aov <- aov(OD.600 ~ carbon, data = datac)
+summary(carbon.aov)
+TukeyHSD(carbon.aov)
+
+o2.aov<- aov(O2 ~ Complete.name, data = data)
+summary(o2.aov)
+TukeyHSD(o2.aov)
+```
+
+```{r}
+grcv1_plot <- ggplot(data, aes(Complete.name, O2))
+mygrcv1 <- grcv1_plot +
+  geom_boxplot() + 
+  geom_dotplot(binaxis='y',stackdir='center', dotsize = 1, fill="red") +
+  theme(axis.text.x = element_text(angle=65, vjust=0.5, size =10)) + 
+  labs(x="Carbon source",y="O2 (mg/L)",size = 0.5) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.key=element_blank(), axis.text=element_text(size=34),axis.title=element_text(size=36),legend.text=element_text(size=22),legend.title = element_text(size=34), axis.line.x = element_line(color="black", size = 1.5), axis.line.y = element_line(color="black", size = 1.5), axis.ticks.y = element_line(color = "black", size = 1.5), axis.ticks.x = element_blank())
+
+plot(mygrcv1)
+```
+
+
