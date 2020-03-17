@@ -1,29 +1,41 @@
 ---
-title: "total.abundance"
-author: "Emmi Mueller"
-date: "February 18, 2019"
+title: "Gut Model Pilot"
+author: "Emmi Mueller and Jay T. Lennon"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+header-includes:
+  - \usepackage{array}
 output: pdf_document
+geometry: margin = 2.54cm
 ---
+Overview: Pilot experiment with gut model 
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '/Users/emmim/GitHub/Gut')
+```
 
-```{r}
-rm(list = ls())
-install.packages(ggplot2)
-library("ggplot2")
-require(ggplot2)
+```{r, results = 'hide', warning=FALSE, message=FALSE}
+rm(list=ls())
+getwd()
+#setwd("~/GitHub/Gut/")
+
+package.list <- c('plyr', 'grid', 'png', 'ggplot2', 'tidyverse') 
+for (package in package.list) {
+  if (!require(package, character.only=T, quietly=T)) { 
+    install.packages(package)
+    library(package, character.only=T)
+  } }
 ```
 
 ## Read in file in .csv format with columns day, abundance(10^7), and complexity
 
 
 ```{r}
-#abundance <- read.table("../data/20190218_0544_PilotAbundance.csv", header = TRUE, sep =",")
-abundance <- read.table("../data/complexity/20190219_0904_PilotAbundance.csv", header = TRUE, sep = ",")
+abundance <- read.table("~/GitHub/Gut/data/complexity/20190219_0904_PilotAbundance.csv", header = TRUE, sep = ",")
 abundance$log <- log10(abundance$Abundance)
 ```
 
 ## Including Plots
 
-You can also embed plots, for example:
 
 ```{r}
 plot(log10(abundance$Abundance[abundance$Complexity=="H"]) ~ abundance$Day[abundance$Complexity=="H"], col = "black", ylim= c(6,10), type = "b", pch = 16, xlab = "", ylab = "", axes = FALSE, cex = 1.2)
@@ -35,6 +47,7 @@ mtext("Time (hrs)", side = 1, line = 3, cex = 1.4)
 legend(5,7, legend = c("Low complexity", "High complexity"), col = c("red", "black"), pch = 16, cex = 1.2)
 box()
 ```
+
 ```{r}
 plot(log10(abundance$Abundance[abundance$Complexity=="L"]) ~ abundance$Day[abundance$Complexity=="L"], col = "black", ylim= c(6,10), type = "b", pch = 16, xlab = "", ylab = "", axes = FALSE, cex = 1.2)
 axis(2, at= c(6,7,8,9,10), labels = c(expression(paste("10"^"6")),expression(paste("10"^"7")), expression(paste("10"^"8")),expression(paste("10"^"9")), expression(paste("10"^"10"))), las = 2)
