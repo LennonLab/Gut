@@ -13,7 +13,7 @@ Overview: Pilot experiment with gut model
 ```{r, results = 'hide', warning=FALSE, message=FALSE}
 rm(list=ls())
 getwd()
-setwd("~/GitHub/Gut/")
+#setwd("~/GitHub/Gut/")
 
 package.list <- c('plyr', 'grid', 'png', 'ggplot2', 'tidyverse') 
 for (package in package.list) {

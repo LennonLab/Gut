@@ -1,0 +1,83 @@
+---
+title: "Gut_RTD"
+author: "Emmi Mueller"
+date: "2/7/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list=ls())
+getwd()
+require("sfsmisc")
+require("ggplot2")
+require("ggpmisc")
+require("ggpubr")
+require("cowplot")
+require("bbmle")
+```
+## Including Plots
+
+```{r figure_setup}
+my.cols <- RColorBrewer::brewer.pal(n = 4, name = "Greys")[3:4]
+
+# Set theme for figures in the paper
+theme_set(theme_classic() + 
+  theme(axis.title = element_text(size = 16),
+        axis.title.x = element_text(margin = margin(t = 15, b = 15)),
+        axis.title.y = element_text(margin = margin(l = 15, r = 15)),
+        axis.text = element_text(size = 14),
+        axis.text.x = element_text(margin = margin(t = 5)),
+        axis.text.y = element_text(margin = margin(r = 5)),
+        #axis.line.x = element_line(size = 1),
+        #axis.line.y = element_line(size = 1),
+        axis.line.x = element_blank(),
+        axis.line.y = element_blank(),
+        axis.ticks.x = element_line(size = 1),
+        axis.ticks.y = element_line(size = 1),
+        axis.ticks.length = unit(.1, "in"),
+        panel.border = element_rect(color = "black", fill = NA, size = 1.5),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 14),
+        strip.text = element_text(size = 14),
+        strip.background = element_blank()
+        ))
+```
+You can also embed plots, for example:
+
+
+#Load data and 
+```{r}
+RTD <- read.csv("../data/RTD/RTD.csv", header = TRUE, sep = ",")
+NV_RTD_18 <- read.csv("../data/RTD/20200218_NV_RTD.csv", header = TRUE, sep = ",")
+NV_RTD_12 <- read.csv("../data/RTD/20200212_NV_RTD.csv", header = TRUE, sep = ",")
+HV_RTD_18 <- read.csv("../data/RTD/20200218_HV_RTD.csv", header = TRUE, sep = ",")
+HV_RTD_12 <- read.csv("../data/RTD/20200212_HV_RTD.csv", header = TRUE, sep = ",")
+
+
+ggplot(RTD, aes(x = Time, y = Conc))+
+  geom_point(size=2,alpha=0.6, aes(shape=RTD$Villi,colour=RTD$RT))+
+  xlab("t") +
+  ylab("C(t)")
+
+NV_RTD_18$E <- NV_RTD_18$Abundance / integrate.xy(NV_RTD_18$ï..Time, NV_RTD_18$Abundance, a = min(NV_RTD_18$ï..Time), b = max(NV_RTD_18$ï..Time))
+HV_RTD_18$E <- HV_RTD_18$Abundance / integrate.xy(HV_RTD_18$ï..Time, HV_RTD_18$Abundance, a = min(HV_RTD_18$ï..Time), b = max(HV_RTD_18$ï..Time))
+NV_RTD_12$E <- NV_RTD_12$Abundance / integrate.xy(NV_RTD_12$ï..Time, NV_RTD_12$Abundance, a = min(NV_RTD_12$ï..Time), b = max(NV_RTD_12$ï..Time))
+HV_RTD_12$E <- HV_RTD_12$Abundance / integrate.xy(HV_RTD_12$Time, HV_RTD_12$Abundance, a = min(HV_RTD_12$Time), b = max(HV_RTD_12$Time))
+
+RT <- ggplot(NV_RTD_18, aes(x = ï..Time, y = E))+
+  geom_point(size=2,alpha=0.6)+
+  geom_point(data = HV_RTD_18, mapping = aes(x = ï..Time, y = E), size =2, alpha = 0.6, col = "blue")+
+  geom_point(data = HV_RTD_12, mapping = aes(x = Time, y = E), size =2, alpha = 0.6, col = "blue")+
+  geom_point(data = NV_RTD_12, mapping = aes(x = ï..Time, y = E), size =2, alpha = 0.6)+
+  xlab("t") +
+  ylab("E(t)")
+
+RT
+
+```
+
+```{r echo = TRUE}
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
