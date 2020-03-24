@@ -14,6 +14,8 @@ require("ggpmisc")
 require("ggpubr")
 require("cowplot")
 require("bbmle")
+require("ggpubr")
+require("igraph")
 ```
 ## Including Plots
 
@@ -42,42 +44,141 @@ theme_set(theme_classic() +
         strip.background = element_blank()
         ))
 ```
-You can also embed plots, for example:
 
 
 #Load data and 
 ```{r}
-RTD <- read.csv("../data/RTD/RTD.csv", header = TRUE, sep = ",")
-NV_RTD_18 <- read.csv("../data/RTD/20200218_NV_RTD.csv", header = TRUE, sep = ",")
-NV_RTD_12 <- read.csv("../data/RTD/20200212_NV_RTD.csv", header = TRUE, sep = ",")
-HV_RTD_18 <- read.csv("../data/RTD/20200218_HV_RTD.csv", header = TRUE, sep = ",")
-HV_RTD_12 <- read.csv("../data/RTD/20200212_HV_RTD.csv", header = TRUE, sep = ",")
+NV_20200218_25 <- read.csv("../data/RTD/20200218_NV_RTD.csv", header = TRUE, sep = ",")
+NV_20200218_25$E <- NV_20200218_25$Conc / integrate.xy(NV_20200218_25$Time, NV_20200218_25$Conc, a = 0, b = 33)
+NV_20200212_25 <- read.csv("../data/RTD/20200212_NV_RTD.csv", header = TRUE, sep = ",")
+NV_20200212_25$E <- NV_20200212_25$Conc / integrate.xy(NV_20200212_25$Time, NV_20200212_25$Conc, a = 0, b = 33)
+NV_20200211_14 <- read.csv("../data/RTD/20200211_NV_RTD.csv", header = TRUE, sep = ",")
+NV_20200211_14$E <- NV_20200211_14$Conc / integrate.xy(NV_20200211_14$Time, NV_20200211_14$Conc, a = 0, b = 33)
+NV_20200219_14 <- read.csv("../data/RTD/20200219_NV_RTD.csv", header = TRUE, sep = ",")
+NV_20200219_14$E <- NV_20200219_14$Conc / integrate.xy(NV_20200219_14$Time, NV_20200219_14$Conc, a = 0, b = 33)
+HV_20200218_25 <- read.csv("../data/RTD/20200218_HV_RTD.csv", header = TRUE, sep = ",")
+HV_20200218_25$E <- HV_20200218_25$Conc / integrate.xy(HV_20200218_25$Time, HV_20200218_25$Conc, a = 0, b = 33)
+HV_20200212_25 <- read.csv("../data/RTD/20200212_HV_RTD.csv", header = TRUE, sep = ",")
+HV_20200212_25$E <- HV_20200212_25$Conc / integrate.xy(HV_20200212_25$Time, HV_20200212_25$Conc, a = 0, b = 33)
+HV_20200211_14 <- read.csv("../data/RTD/20200211_HV_RTD.csv", header = TRUE, sep = ",")
+HV_20200211_14$E <- HV_20200211_14$Conc / integrate.xy(HV_20200211_14$Time, HV_20200211_14$Conc, a = 0, b = 33)
+HV_20200219_14 <- read.csv("../data/RTD/20200219_HV_RTD.csv", header = TRUE, sep = ",")
+HV_20200219_14$E <- HV_20200219_14$Conc / integrate.xy(HV_20200219_14$Time, HV_20200219_14$Conc, a = 0, b = 33)
 
+```
 
-ggplot(RTD, aes(x = Time, y = Conc))+
-  geom_point(size=2,alpha=0.6, aes(shape=RTD$Villi,colour=RTD$RT))+
-  xlab("t") +
-  ylab("C(t)")
+```{r}
+#qualitative replicate comparison
 
-NV_RTD_18$E <- NV_RTD_18$Abundance / integrate.xy(NV_RTD_18$ï..Time, NV_RTD_18$Abundance, a = min(NV_RTD_18$ï..Time), b = max(NV_RTD_18$ï..Time))
-HV_RTD_18$E <- HV_RTD_18$Abundance / integrate.xy(HV_RTD_18$ï..Time, HV_RTD_18$Abundance, a = min(HV_RTD_18$ï..Time), b = max(HV_RTD_18$ï..Time))
-NV_RTD_12$E <- NV_RTD_12$Abundance / integrate.xy(NV_RTD_12$ï..Time, NV_RTD_12$Abundance, a = min(NV_RTD_12$ï..Time), b = max(NV_RTD_12$ï..Time))
-HV_RTD_12$E <- HV_RTD_12$Abundance / integrate.xy(HV_RTD_12$Time, HV_RTD_12$Abundance, a = min(HV_RTD_12$Time), b = max(HV_RTD_12$Time))
+#NV_25
+NV_25 <- ggplot(NV_20200212_25, aes(x =Time, y = E))+
+  geom_point(size = 2, alpha = 0.6)+
+  geom_point(data = NV_20200218_25, mapping = aes(x = Time, y = E), size = 2, alpha = 0.6, col = "red")+
+  xlab("t")+
+  ylab("E(t)")
 
-RT <- ggplot(NV_RTD_18, aes(x = ï..Time, y = E))+
+#NV_14
+NV_14 <- ggplot(NV_20200211_14, aes(x = Time, y = E))+
+  geom_point(size = 2, alpha = 0.6)+
+  geom_point(data = NV_20200219_14, mapping = aes(x = Time, y = E), size = 2, alpha = 0.6, col = "red")+
+  xlab("t")+
+  ylab("E(t)")
+
+#HV_25
+HV_25 <- ggplot(HV_20200212_25, aes(x = Time, y = E))+
+  geom_point(size = 2, alpha = 0.6)+
+  geom_point(data = HV_20200218_25, mapping = aes(x = Time, y = E), size = 2, alpha = 0.6, col = "red")+
+  xlab("t")+
+  ylab("E(t)")
+
+#HV_14
+HV_14 <- ggplot(HV_20200211_14, aes(x = Time, y = E))+
+  geom_point(size =2, alpha = 0.6)+
+  geom_point(data = HV_20200219_14, mapping = aes(x = Time, y = E), size = 2, alpha = 0.6, col = "red")+
+  xlab("t")+
+  ylab("E(t)")
+
+ggarrange(NV_25, NV_14, HV_25, HV_14, labels = c("NV25", "NV14", "HV25", "HV14"), ncol = 2, nrow = 2)
+ggsave("../output/Replication.pdf")
+ggsave("../output/Replication.png")
+
+#qualitative RT comparison
+
+#NV (blue is 14, black is 25)
+NV <- ggplot(NV_20200218_25, aes(x = Time, y = E))+
   geom_point(size=2,alpha=0.6)+
-  geom_point(data = HV_RTD_18, mapping = aes(x = ï..Time, y = E), size =2, alpha = 0.6, col = "blue")+
-  geom_point(data = HV_RTD_12, mapping = aes(x = Time, y = E), size =2, alpha = 0.6, col = "blue")+
-  geom_point(data = NV_RTD_12, mapping = aes(x = ï..Time, y = E), size =2, alpha = 0.6)+
+  geom_point(data = NV_20200212_25, mapping = aes(x = Time, y = E), size =2, alpha = 0.6)+
+  geom_point(data = NV_20200211_14, mapping = aes(x = Time, y = E), size =2, alpha = 0.6, col = "blue")+
+  geom_point(data = NV_20200219_14, mapping = aes(x = Time, y = E), size = 2, alpha = 0.6, col = "blue")+
   xlab("t") +
   ylab("E(t)")
 
-RT
+#HV (blue is 14, black is 25)
+HV <- ggplot(HV_20200218_25, aes(x = Time, y = E))+
+  geom_point(size=2,alpha=0.6)+
+  geom_point(data = HV_20200212_25, mapping = aes(x = Time, y = E), size =2, alpha = 0.6)+
+  geom_point(data = HV_20200211_14, mapping = aes(x = Time, y = E), size =2, alpha = 0.6, col = "blue")+
+  geom_point(data = HV_20200219_14, mapping = aes(x = Time, y = E), size = 2, alpha = 0.6, col = "blue")+
+  xlab("t") +
+  ylab("E(t)")
+
+ggarrange(NV, HV, labels = c("NV", "HV"), ncol = 1, nrow = 2)
+ggsave("../output/RT.pdf")
+ggsave("../output/RT.png")
+
+#qualitative V comparison
+
+#25 (blue is NV, black is HV)
+RT_25 <- ggplot(HV_20200218_25, aes(x = Time, y = E))+
+  geom_point(size=2,alpha=0.6)+
+  geom_point(data = HV_20200212_25, mapping = aes(x = Time, y = E), size =2, alpha = 0.6)+
+  geom_point(data = NV_20200218_25, mapping = aes(x = Time, y= E), size = 2, alpha = 0.6, col = "blue")+
+  geom_point(data = NV_20200212_25, mapping = aes(x = Time, y = E), size = 2, alpha = 0.6, col = "blue")+
+  xlab("t")+
+  ylab("E(t)")
+
+#14 (blue is NV, black is HV)
+RT_14 <- ggplot(HV_20200211_14, aes(x = Time, y = E))+
+  geom_point(size=2,alpha=0.6)+
+  geom_point(data = HV_20200219_14, mapping = aes(x = Time, y = E), size =2, alpha = 0.6)+
+  geom_point(data = NV_20200211_14, mapping = aes(x = Time, y= E), size = 2, alpha = 0.6, col = "blue")+
+  geom_point(data = NV_20200219_14, mapping = aes(x = Time, y = E), size = 2, alpha = 0.6, col = "blue")+
+  xlab("t")+
+  ylab("E(t)")
+
+ggarrange(RT_25, RT_14, labels = c("25", "14"), ncol = 1, nrow = 2)
+ggsave("../output/V.pdf")
+ggsave("../output/V.png")
+
 
 ```
 
-```{r echo = TRUE}
+```{r}
+fit_HV <- fit_power_law(HV_20200218_25$E, implementation = ("R.mle"))
+ggplot(HV_20200218_25, aes(x = Time, y = E))+
+  geom_point(size=2,alpha=0.6)+
+  stat_function(fun = function(x) x^-(stats4::coef(fit_HV)))+
+  ylim(0, 0.5)+
+  annotate(geom="text", x=25, y=0.4, label=stats4::coef(fit_HV),
+              color="red")
 
+ggsave("../output/HV_25.pwrlaw.png")
+
+fit_NV <- fit_power_law(NV_20200218_25$E, implementation = ("R.mle"))
+ggplot(NV_20200218_25, aes(x = Time, y = E))+
+  geom_point(size=2,alpha=0.6)+
+  stat_function(fun = function(x) x^-(stats4::coef(fit_NV)))+
+  ylim(0, 0.5)+
+  annotate(geom="text", x=25, y=0.4, label=stats4::coef(fit_NV),
+              color="red")
+
+ggsave("../output/NV_25.pwrlaw.png")
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+
+fit <- mle2(HV_20200218_25$Conc ~ integrate((k-2)(a^k-2)(e^-a)),
+             method = "L-BFGS-B", lower = c(x = 0.0000, b = 0.001), 
+             start = list(a = A, x = X, b = B, t = T, z = Z), data = resp) 
+
+```
