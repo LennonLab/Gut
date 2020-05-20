@@ -1,0 +1,142 @@
+---
+title: "Gut Model Development"
+author: "Emmi Mueller and Jay T. Lennon"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+header-includes:
+  - \usepackage{array}
+output: pdf_document
+geometry: margin = 2.54cm
+---
+Overview: Pilot experiment with gut model
+
+##Set up environment
+```{r, results = 'hide', warning=FALSE, message=FALSE}
+rm(list=ls())
+
+package.list <- c('plyr', 'grid', 'png', 'ggplot2', 'tidyverse', 'here', 'ggpmisc', 'Hmisc', 'ggsignif') 
+for (package in package.list) {
+  if (!require(package, character.only=T, quietly=T)) { 
+    install.packages(package)
+    library(package, character.only=T)
+  } }
+
+here()
+```
+#Set up figure themes
+```{r figure_setup}
+my.cols <- RColorBrewer::brewer.pal(n = 4, name = "Greys")[3:4]
+
+# Set theme for figures in the paper
+theme_set(theme_classic() + 
+  theme(axis.title = element_text(size = 16),
+        axis.title.x = element_text(margin = margin(t = 15, b = 15)),
+        axis.title.y = element_text(margin = margin(l = 15, r = 15)),
+        axis.text = element_text(size = 14),
+        axis.text.x = element_text(margin = margin(t = 5)),
+        axis.text.y = element_text(margin = margin(r = 5)),
+        axis.line.x = element_blank(),
+        axis.line.y = element_blank(),
+        axis.ticks.x = element_line(size = 1),
+        axis.ticks.y = element_line(size = 1),
+        axis.ticks.length = unit(.1, "in"),
+        panel.border = element_rect(color = "black", fill = NA, size = 1.5),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 14),
+        strip.text = element_text(size = 14),
+        strip.background = element_blank()
+        ))
+```
+## Read in file in .csv format with columns day, abundance, and complexity level
+## Set up functions: sem, 
+```{r}
+abundance <- read.table(here("data", "GM_pilot","20190219_0904_PilotAbundance.csv"), header = TRUE, sep = ",")
+
+oxygen <- read.table(here("data", "GM_pilot", "Oxygen_Pilot_20190926.csv"), header = TRUE, sep = ",")
+
+sem <- function(x, ...){sd(x, na.rm = TRUE)/sqrt(length(na.omit(x)))}
+
+ttest <- function(reg, coefnum, val){
+  co <- coef(summary(reg))
+  tstat <- (co[coefnum,1]-val)/co[coefnum,2]
+  pstat <- 2 * pt(abs(tstat), reg$df.residual, lower.tail = FALSE)
+  return(list = c(t = tstat, df = reg$df.residual, p =  pstat))
+}
+```
+
+## Clean and transform data
+```{r}
+#Abundance data
+abundance$Log <- log10(abundance$Abundance)
+
+#Oxygen data
+LB <- oxygen[which(oxygen$Oxygen == "LB"),]
+LB <- rbind(LB, oxygen[which(oxygen$Oxygen == "Spent"),])
+Gut <- oxygen[which(oxygen$Oxygen == "Gut"),]
+Gut <- rbind(Gut, oxygen[which(oxygen$Oxygen == "Spent_Gut"),])
+
+oxygen.means <- aggregate(Concentration ~Oxygen, data = oxygen, FUN = mean) 
+oxygen.n <- aggregate(Concentration ~Oxygen, data = oxygen, FUN = length) 
+oxygen.sem <- aggregate(Concentration ~Oxygen, data = oxygen, FUN = sem) 
+oxygen.95.LL <- aggregate(Concentration ~Oxygen, data = oxygen,
+          FUN = function(x) t.test(x)$conf.int[1])
+oxygen.95.UL <- aggregate(Concentration ~Oxygen, data = oxygen,
+          FUN = function(x) t.test(x)$conf.int[2])
+
+oxygen.table <- data.frame(oxygen.means, oxygen.sem[ ,2], oxygen.n[ ,2], 
+                           oxygen.95.LL[,2], oxygen.95.UL[,2])
+colnames(oxygen.table) <- c("oxygen", "mean", "sem", "n", "95LL", "95UL")
+```
+
+## Plot abundance pilot data
+```{r}
+ggplot(abundance,aes(x= (abundance$Day * 24),y=abundance$Log, color = abundance$Complexity))+
+  geom_point(size=2,alpha=0.6)+
+  xlab("Time (hrs)") +
+  geom_smooth(method = "lm",formula =y ~ x)+
+  ylab("Abundance (cells/mL)")+
+  stat_poly_eq(formula = y ~ x, rr.digits = 2, parse = TRUE)+
+  theme_bw()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+
+ggsave(here("output", "Pilot.abundance.pdf"))
+ggsave(here("output", "Pilot.abundance.png"))
+```
+
+##Abundance summary statistics
+```{r}
+
+abundance_summary <- summary(abundance$Log)
+abundance_sem <- sem(abundance$Log)
+abundance_cv <- sd(abundance$Log)/mean(abundance$Log)
+
+```
+
+## Plot oxygen pilot data
+```{r}
+oxygen[which(oxygen$Oxygen == "Spent"),"Concentration"]
+t.test(oxygen[which(oxygen$Oxygen == "LB"),"Concentration"], oxygen[which(oxygen$Oxygen == "Spent"),"Concentration"])
+
+ggplot(LB, aes(x = LB$Oxygen, y = LB$Concentration))+
+  geom_jitter(width = 0.2, height = 0.1, size=2,alpha=0.6, color = "grey")+
+  ylab("Dissolved oxygen (mg/L)")+
+  theme_bw()+
+  scale_x_discrete(labels=c("LB" = "Feed", "Spent" = "Reactor"))+
+  scale_y_continuous(limits = c(-0.1, 8))+
+  stat_summary(fun.data="mean_se", fun.args = list(mult=1), 
+                geom="errorbar", width=0.3, color = "black")+
+  stat_summary(fun.data="mean_se", fun.args = list(mult=2),
+                geom = "point", color = "black", pch = 1, size = 4)+
+  coord_equal(ratio = 0.5)+
+  theme(axis.title.x = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())+
+  geom_signif(comparisons=list(c("LB", "Spent")), annotations="***",
+              y_position = 8, tip_length = 0, vjust=0.4)
+
+ggsave(here("output", "Pilot.oxygen.pdf"))
+ggsave(here("output", "Pilot.oxygen.png"))
+```
+```
+
+
