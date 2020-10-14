@@ -13,7 +13,7 @@ Overview: Pilot experiment with gut model
 ```{r, results = 'hide', warning=FALSE, message=FALSE}
 rm(list=ls())
 
-package.list <- c('plyr', 'grid', 'png', 'ggplot2', 'tidyverse', 'here', 'ggpmisc', 'Hmisc', 'ggsignif') 
+package.list <- c('plyr', 'grid', 'png', 'ggplot2', 'tidyverse', 'here', 'ggpmisc', 'Hmisc', 'ggsignif', 'ggpubr') 
 for (package in package.list) {
   if (!require(package, character.only=T, quietly=T)) { 
     install.packages(package)
@@ -28,10 +28,10 @@ my.cols <- RColorBrewer::brewer.pal(n = 4, name = "Greys")[3:4]
 
 # Set theme for figures in the paper
 theme_set(theme_classic() + 
-  theme(axis.title = element_text(size = 16),
+  theme(axis.title = element_text(size = 15),
         axis.title.x = element_text(margin = margin(t = 15, b = 15)),
         axis.title.y = element_text(margin = margin(l = 15, r = 15)),
-        axis.text = element_text(size = 14),
+        axis.text = element_text(size = 15),
         axis.text.x = element_text(margin = margin(t = 5)),
         axis.text.y = element_text(margin = margin(r = 5)),
         axis.line.x = element_blank(),
@@ -40,16 +40,18 @@ theme_set(theme_classic() +
         axis.ticks.y = element_line(size = 1),
         axis.ticks.length = unit(.1, "in"),
         panel.border = element_rect(color = "black", fill = NA, size = 1.5),
-        legend.title = element_blank(),
-        legend.text = element_text(size = 14),
-        strip.text = element_text(size = 14),
+        legend.title = element_text(size = 20),
+        legend.text = element_text(size = 15),
+        strip.text = element_text(size = 20),
         strip.background = element_blank()
         ))
 ```
 ## Read in file in .csv format with columns day, abundance, and complexity level
 ## Set up functions: sem, 
 ```{r}
-abundance <- read.table(here("data", "GM_pilot","20190219_0904_PilotAbundance.csv"), header = TRUE, sep = ",")
+#abundance <- read.table(here("data", "GM_pilot","20190219_0904_PilotAbundance.csv"), header = TRUE, sep = ",")
+abundance <- read.table(here("data", "GM_pilot", "20201014_1508_HLTPilotAbundance.csv"), header = TRUE, sep = ",")
+abundance$Abundance <- abundance$P1.Abs..Count - abundance$PBS
 
 oxygen <- read.table(here("data", "GM_pilot", "Oxygen_Pilot_20190926.csv"), header = TRUE, sep = ",")
 
@@ -67,6 +69,7 @@ ttest <- function(reg, coefnum, val){
 ```{r}
 #Abundance data
 abundance$Log <- log10(abundance$Abundance)
+abundance$Hrs <- (abundance$Day *24)
 
 #Oxygen data
 LB <- oxygen[which(oxygen$Oxygen == "LB"),]
@@ -89,18 +92,29 @@ colnames(oxygen.table) <- c("oxygen", "mean", "sem", "n", "95LL", "95UL")
 
 ## Plot abundance pilot data
 ```{r}
-ggplot(abundance,aes(x= (abundance$Day * 24),y=abundance$Log, color = abundance$Complexity))+
-  geom_point(size=2,alpha=0.6)+
+summary(lm(abundance$Log~abundance$Hrs))
+ggplot(abundance,aes(x= Hrs, y= Log, group = Gut, color = Gut))+
+  geom_line()+
+  geom_point(cex = 1.5)+
   xlab("Time (hrs)") +
-  geom_smooth(method = "lm",formula =y ~ x)+
-  ylab("Abundance (cells/mL)")+
-  stat_poly_eq(formula = y ~ x, rr.digits = 2, parse = TRUE)+
-  theme_bw()+
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank())
+  ylab("log(Abundance (cells/mL))")+
+  ylim(c(0, 12))
 
-ggsave(here("output", "Pilot.abundance.pdf"))
-ggsave(here("output", "Pilot.abundance.png"))
+ggsave(here("output", "HLTPilot.abundance.pdf"), dpi = 400, width = 6, height = 5)
+ggsave(here("output", "HLTPilot.abundance.png"), dpi = 400, width = 6, height = 5)
+```
+#Abundance GM_Pilot
+```{r}
+summary(lm(abundance$Log~abundance$Hrs))
+ggplot(abundance,aes(x= Hrs, y= Log, group = Gut, color = Gut))+
+  geom_line()+
+  geom_point(cex = 1.5)+
+  xlab("Time (hrs)") +
+  ylab("log(Abundance (cells/mL))")+
+  ylim(c(0, 12))
+
+ggsave(here("output", "HLTPilot.abundance.pdf"), dpi = 400, width = 6, height = 5)
+ggsave(here("output", "HLTPilot.abundance.png"), dpi = 400, width = 6, height = 5)
 ```
 
 ##Abundance summary statistics
@@ -120,22 +134,18 @@ t.test(oxygen[which(oxygen$Oxygen == "LB"),"Concentration"], oxygen[which(oxygen
 ggplot(LB, aes(x = LB$Oxygen, y = LB$Concentration))+
   geom_jitter(width = 0.2, height = 0.1, size=2,alpha=0.6, color = "grey")+
   ylab("Dissolved oxygen (mg/L)")+
-  theme_bw()+
+  xlab("")+
   scale_x_discrete(labels=c("LB" = "Feed", "Spent" = "Reactor"))+
   scale_y_continuous(limits = c(-0.1, 8))+
   stat_summary(fun.data="mean_se", fun.args = list(mult=1), 
                 geom="errorbar", width=0.3, color = "black")+
   stat_summary(fun.data="mean_se", fun.args = list(mult=2),
                 geom = "point", color = "black", pch = 1, size = 4)+
-  coord_equal(ratio = 0.5)+
-  theme(axis.title.x = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank())+
   geom_signif(comparisons=list(c("LB", "Spent")), annotations="***",
               y_position = 8, tip_length = 0, vjust=0.4)
 
 ggsave(here("output", "Pilot.oxygen.pdf"))
-ggsave(here("output", "Pilot.oxygen.png"))
+ggsave(here("output", "Pilot.oxygen.png"), height = 4, width =3)
 ```
 ```
 
