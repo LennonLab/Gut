@@ -44,70 +44,6 @@ theme_set(theme_classic() +
         ))
 ```
 
-
-#Load data and determine medians by hand with numerical integration
-```{r}
-NV_20200218_25 <- read.csv("../data/RTD/20200218_NV_RTD.csv", header = TRUE, sep = ",")
-NV_20200218_25 <- NV_20200218_25[7:67,]
-NV_20200218_25$E <- NV_20200218_25$Conc / integrate.xy(NV_20200218_25$Time, NV_20200218_25$Conc, a = 3, b = 33)
-NV_20200218_25$F <- integrate.xy(NV_20200218_25$Time, NV_20200218_25$E, a = 3, b = 33)
-NV_20200218_25$CDF <- CDF(NV_20200218_25)
-
-NV_20200212_25 <- read.csv("../data/RTD/20200212_NV_RTD.csv", header = TRUE, sep = ",")
-NV_20200212_25 <- NV_20200212_25[7:67,]
-NV_20200212_25$E <- NV_20200212_25$Conc / integrate.xy(NV_20200212_25$Time, NV_20200212_25$Conc, a = 3, b = 33)
-NV_20200212_25$F <- integrate.xy(NV_20200212_25$Time, NV_20200212_25$E, a = 3, b = 33)
-NV_20200212_25$CDF <- CDF(NV_20200212_25)
-
-NV_20200211_14 <- read.csv("../data/RTD/20200211_NV_RTD.csv", header = TRUE, sep = ",")
-NV_20200211_14 <- NV_20200211_14[7:67,]
-NV_20200211_14$E <- NV_20200211_14$Conc / integrate.xy(NV_20200211_14$Time, NV_20200211_14$Conc, a = 3, b = 33)
-NV_20200211_14$CDF <- CDF(NV_20200211_14)
-
-NV_20200219_14 <- read.csv("../data/RTD/20200219_NV_RTD.csv", header = TRUE, sep = ",")
-NV_20200219_14 <- NV_20200219_14[7:67,]
-NV_20200219_14$E <- NV_20200219_14$Conc / integrate.xy(NV_20200219_14$Time, NV_20200219_14$Conc, a = 3, b = 33)
-NV_20200219_14$CDF <- CDF(NV_20200219_14)
-
-HV_20200218_25 <- read.csv("../data/RTD/20200218_HV_RTD.csv", header = TRUE, sep = ",")
-HV_20200218_25 <- HV_20200218_25[7:67,]
-HV_20200218_25$E <- HV_20200218_25$Conc / integrate.xy(HV_20200218_25$Time, HV_20200218_25$Conc, a = 3, b = 33)
-HV_20200218_25$CDF <- CDF(HV_20200218_25)
-
-HV_20200212_25 <- read.csv("../data/RTD/20200212_HV_RTD.csv", header = TRUE, sep = ",")
-HV_20200212_25 <- HV_20200212_25[7:67,]
-HV_20200212_25$E <- HV_20200212_25$Conc / integrate.xy(HV_20200212_25$Time, HV_20200212_25$Conc, a = 3, b = 33)
-HV_20200212_25$CDF <- CDF(HV_20200212_25)
-
-HV_20200211_14 <- read.csv("../data/RTD/20200211_HV_RTD.csv", header = TRUE, sep = ",")
-HV_20200211_14 <- HV_20200211_14[7:67,]
-HV_20200211_14$E <- HV_20200211_14$Conc / integrate.xy(HV_20200211_14$Time, HV_20200211_14$Conc, a = 3, b = 33)
-HV_20200211_14$CDF <- CDF(HV_20200211_14)
-
-HV_20200219_14 <- read.csv("../data/RTD/20200219_HV_RTD.csv", header = TRUE, sep = ",")
-HV_20200219_14 <- HV_20200219_14[7:67,]
-HV_20200219_14$E <- HV_20200219_14$Conc / integrate.xy(HV_20200219_14$Time, HV_20200219_14$Conc, a = 3, b = 33)
-HV_20200219_14$CDF <- CDF(HV_20200219_14)
-
-Total <- data.frame(HV_20200211_14$Time)
-colnames(Total) <- ("Time")
-Total$HV_14 <- (HV_20200211_14$E + HV_20200219_14$E)/2
-Total$HV_25 <- (HV_20200212_25$E + HV_20200218_25$E)/2
-Total$NV_14 <- (NV_20200211_14$E + NV_20200219_14$E)/2
-Total$NV_25 <- (NV_20200212_25$E + NV_20200218_25$E)/2
-
-# integrate.xy(HV_20200211_14$Time, HV_20200211_14$E, a =0, b= 9.125)
-# integrate.xy(HV_20200212_25$Time, HV_20200212_25$E, a = 0, b=9.456)
-# integrate.xy(HV_20200218_25$Time, HV_20200218_25$E, a = 0, b=9.507)
-# integrate.xy(HV_20200219_14$Time, HV_20200219_14$E, a = 0, b=7.548)
-# 
-# integrate.xy(NV_20200211_14$Time, NV_20200211_14$E, a = 0, b = 7.982)
-# integrate.xy(NV_20200212_25$Time, NV_20200212_25$E, a = 0, b=10.177)
-# integrate.xy(NV_20200218_25$Time, NV_20200218_25$E, a = 0, b= 11.799)
-# integrate.xy(NV_20200219_14$Time, NV_20200219_14$E, a = 0, b=9.507)
-
-```
-
 ```{r}
 CDF <- function(data){
   x <- data[1,"E"]
@@ -118,9 +54,93 @@ CDF <- function(data){
   }
   return(x)
 }
+
+RTD <- function(X){
+  X <- X[7:66,]
+  X$E <- X$Conc/(integrate.xy(X$Time, X$Conc, a = 3, b= 32.5))
+  X[3,"E"]
+  f <- X[3,"E"]
+  x <- 3.5
+  while (x < 33){
+    f <- c(f, integrate.xy(X$Time, X$E, a = 3, b= x))
+    x <-  x + 0.5
+  }
+  X$f <- f
+  return(X)
+}
 ```
 
+
+#Load data and determine medians by hand with numerical integration
+```{r}
+NV_20200212_25 <- read.csv("../data/RTD/20200212_NV_RTD.csv", header = TRUE, sep = ",")
+NV_20200212_25 <- RTD(NV_20200212_25)
+
+NV_20200218_25 <- read.csv("../data/RTD/20200218_NV_RTD.csv", header = TRUE, sep = ",")
+NV_20200218_25 <- RTD(NV_20200218_25)
+
+NV_20200211_14 <- read.csv("../data/RTD/20200211_NV_RTD.csv", header = TRUE, sep = ",")
+NV_20200211_14 <- RTD(NV_20200211_14)
+
+NV_20200219_14 <- read.csv("../data/RTD/20200219_NV_RTD.csv", header = TRUE, sep = ",")
+NV_20200219_14 <- RTD(NV_20200219_14)
+
+HV_20200218_25 <- read.csv("../data/RTD/20200218_HV_RTD.csv", header = TRUE, sep = ",")
+HV_20200218_25 <- RTD(HV_20200218_25)
+
+HV_20200212_25 <- read.csv("../data/RTD/20200212_HV_RTD.csv", header = TRUE, sep = ",")
+HV_20200212_25 <- RTD(HV_20200212_25)
+
+HV_20200211_14 <- read.csv("../data/RTD/20200211_HV_RTD.csv", header = TRUE, sep = ",")
+HV_20200211_14 <- RTD(HV_20200211_14)
+
+HV_20200219_14 <- read.csv("../data/RTD/20200219_HV_RTD.csv", header = TRUE, sep = ",")
+HV_20200219_14 <- RTD(HV_20200219_14)
+
+HV_20201115_25_A <- read.csv("../data/RTD/20201115A_HV_RTD.csv", header = TRUE, sep = ",")
+HV_20201115_25_A <- RTD(HV_20201115_25_A)
+
+HV_20201115_25_B <- read.csv("../data/RTD/20201115B_HV_RTD.csv", header = TRUE, sep = ",")
+HV_20201115_25_B <- RTD(HV_20201115_25_B)
+
+HV_20201115_25_C <- read.csv("../data/RTD/20201115C_HV_RTD.csv", header = TRUE, sep = ",")
+HV_20201115_25_C <- RTD(HV_20201115_25_C)
+
+
+
+Total <- data.frame(HV_20200211_14$Time)
+colnames(Total) <- ("Time")
+Total$HV_14 <- (HV_20200211_14$E + HV_20200219_14$E)/2
+Total$HV_25 <- (HV_20200212_25$E + HV_20200218_25$E+ HV_20201115_25_A$E + HV_20201115_25_B$E)/4
+Total$NV_14 <- (NV_20200211_14$E + NV_20200219_14$E)/2
+Total$NV_25 <- (NV_20200212_25$E + NV_20200218_25$E)/2
+
+```
+
+
+#qualitative F(t) comparisons
+```{r}
+F_25 <- ggplot(HV_20201115_25_A, aes(x=Time, y = f))+
+  geom_line()+
+  geom_line(data = HV_20201115_25_B, mapping = aes(x = Time, y = f))+
+  geom_line(data = NV_20200212_25, mapping = aes(x= Time, y = f), col = "red")+
+  geom_line(data = NV_20200218_25, mapping = aes(x= Time, y = f), col = "red")
+
+F_25
+
+F_HV <- ggplot(HV_20201115_25_A, aes(x=Time, y = f))+
+  geom_line()+
+  geom_line(data = HV_20201115_25_B, mapping = aes(x = Time, y = f))+
+  geom_line(data = HV_20200211_14, mapping = aes(x= Time, y = f), col = "red")+
+  geom_line(data = HV_20200219_14, mapping = aes(x= Time, y = f), col = "red")
+
+F_HV
+              
+```
+
+
 #qualitative replicate comparison
+
 ```{r}
 
 #Added weird aes as a test of legends
@@ -145,9 +165,14 @@ NV_14 <- ggplot(NV_20200211_14, aes(x = Time, y = E))+
 HV_25 <- ggplot(HV_20200212_25, aes(x = Time, y = E))+
   geom_line()+
   geom_line(data = HV_20200218_25, mapping = aes(x = Time, y = E))+
-  geom_line(data = Total, mapping = aes(x = Time, y = HV_25), col = "red")+
+  geom_line(data = HV_20201115_25_A, mapping = aes(x = Time, y= E), cex = 2)+
+  geom_line(data = HV_20201115_25_B, mapping = aes(x = Time, y= E), cex = 2)+
+  #geom_line(data = HV_20201115_25_C, mapping = aes(x = Time, y= E), cex = 2)+
+  geom_line(data = Total, mapping = aes(x = Time, y = HV_25), col = "red", cex = 2)+
   xlab("t")+
   ylab("E(t)")
+
+HV_25
 
 HV_14 <- ggplot(HV_20200211_14, aes(x = Time, y = E))+
   geom_line()+
@@ -160,6 +185,18 @@ ggarrange(NV_25, NV_14, HV_25, HV_14, labels = c("NV25", "NV14", "HV25", "HV14")
 ggsave("../output/Replication.pdf")
 ggsave("../output/Replication.png")
 
+
+#Concentrations
+HV_25_raw <- ggplot(HV_20200212_25, aes(x = Time, y = Conc))+
+  geom_line()+
+  geom_line(data = HV_20200218_25, mapping = aes(x = Time, y = Conc))+
+  geom_line(data = HV_20201115_25_A, mapping = aes(x = Time, y= Conc), cex = 1.5)+
+  geom_line(data = HV_20201115_25_B, mapping = aes(x = Time, y= Conc), cex = 1.5)+
+  geom_line(data = HV_20201115_25_C, mapping = aes(x = Time, y= Conc), cex = 1.5)+
+  xlab("t")+
+  ylab("Cells/mL")
+
+HV_25_raw
 
 ```
 
