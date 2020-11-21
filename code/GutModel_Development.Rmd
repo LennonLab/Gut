@@ -50,10 +50,11 @@ theme_set(theme_classic() +
 ## Set up functions: sem, 
 ```{r}
 #abundance <- read.table(here("data", "GM_pilot","20190219_0904_PilotAbundance.csv"), header = TRUE, sep = ",")
-abundance <- read.table(here("data", "GM_pilot", "20201014_1508_HLTPilotAbundance.csv"), header = TRUE, sep = ",")
+abundance <- read.table(here("data", "GM_pilot", "20201029_1354_HLTPilotAbundance.csv"), header = TRUE, sep = ",")
 abundance$Abundance <- abundance$P1.Abs..Count - abundance$PBS
 
-oxygen <- read.table(here("data", "GM_pilot", "Oxygen_Pilot_20190926.csv"), header = TRUE, sep = ",")
+#oxygen <- read.table(here("data", "GM_pilot", "Oxygen_Pilot_20190926.csv"), header = TRUE, sep = ",")
+oxygen <- read.table(here("data", "GM_pilot", "Oxygen_Pilot_20201029.csv"), header = TRUE, sep = ",")
 
 sem <- function(x, ...){sd(x, na.rm = TRUE)/sqrt(length(na.omit(x)))}
 
@@ -72,11 +73,6 @@ abundance$Log <- log10(abundance$Abundance)
 abundance$Hrs <- (abundance$Day *24)
 
 #Oxygen data
-LB <- oxygen[which(oxygen$Oxygen == "LB"),]
-LB <- rbind(LB, oxygen[which(oxygen$Oxygen == "Spent"),])
-Gut <- oxygen[which(oxygen$Oxygen == "Gut"),]
-Gut <- rbind(Gut, oxygen[which(oxygen$Oxygen == "Spent_Gut"),])
-
 oxygen.means <- aggregate(Concentration ~Oxygen, data = oxygen, FUN = mean) 
 oxygen.n <- aggregate(Concentration ~Oxygen, data = oxygen, FUN = length) 
 oxygen.sem <- aggregate(Concentration ~Oxygen, data = oxygen, FUN = sem) 
@@ -93,10 +89,10 @@ colnames(oxygen.table) <- c("oxygen", "mean", "sem", "n", "95LL", "95UL")
 ## Plot abundance pilot data
 ```{r}
 summary(lm(abundance$Log~abundance$Hrs))
-ggplot(abundance,aes(x= Hrs, y= Log, group = Gut, color = Gut))+
+ggplot(abundance,aes(x= Day, y= Log, group = Gut, color = Gut))+
   geom_line()+
   geom_point(cex = 1.5)+
-  xlab("Time (hrs)") +
+  xlab("Days") +
   ylab("log(Abundance (cells/mL))")+
   ylim(c(0, 12))
 
@@ -128,24 +124,26 @@ abundance_cv <- sd(abundance$Log)/mean(abundance$Log)
 
 ## Plot oxygen pilot data
 ```{r}
-oxygen[which(oxygen$Oxygen == "Spent"),"Concentration"]
-t.test(oxygen[which(oxygen$Oxygen == "LB"),"Concentration"], oxygen[which(oxygen$Oxygen == "Spent"),"Concentration"])
+oind<-order(as.numeric(by(oxygen$Concentration, oxygen$Oxygen,median,na.rm=T)), decreasing = T)
+oxygen$Oxygen<-ordered(oxygen$Oxygen,levels=levels(oxygen$Oxygen)[oind])
+t.test(oxygen[which(oxygen$Oxygen == "Gut"),"Concentration"], oxygen[which(oxygen$Oxygen == "Media"),"Concentration"])
 
-ggplot(LB, aes(x = LB$Oxygen, y = LB$Concentration))+
+ggplot(oxygen, aes(x = Oxygen, y = Concentration))+
   geom_jitter(width = 0.2, height = 0.1, size=2,alpha=0.6, color = "grey")+
   ylab("Dissolved oxygen (mg/L)")+
   xlab("")+
-  scale_x_discrete(labels=c("LB" = "Feed", "Spent" = "Reactor"))+
+  scale_x_discrete(labels=c("Media" = "Feed", "Gut" = "Reactor"))+
   scale_y_continuous(limits = c(-0.1, 8))+
   stat_summary(fun.data="mean_se", fun.args = list(mult=1), 
                 geom="errorbar", width=0.3, color = "black")+
   stat_summary(fun.data="mean_se", fun.args = list(mult=2),
                 geom = "point", color = "black", pch = 1, size = 4)+
-  geom_signif(comparisons=list(c("LB", "Spent")), annotations="***",
-              y_position = 8, tip_length = 0, vjust=0.4)
+  geom_signif(comparisons=list(c("Media", "Gut")), annotations="*",
+              y_position= 8, tip_length = 0, vjust=0.4)+
+  annotate("text", x = 2.3, y = 8, label = "p = 0.025", cex = 2)
 
-ggsave(here("output", "Pilot.oxygen.pdf"))
-ggsave(here("output", "Pilot.oxygen.png"), height = 4, width =3)
+ggsave(here("output", "HLTPilot_oxygen.pdf"))
+ggsave(here("output", "HLTPilot_oxygen.png"), height = 4, width =3)
 ```
 ```
 
