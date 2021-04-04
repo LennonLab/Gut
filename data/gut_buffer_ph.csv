@@ -1,23 +1,45 @@
-Dilution,pH,Inoculum
-0,8.58,E. coli
-1.00E-11,8.65,E. coli
-1.00E-10,8.78,E. coli
-0.000000001,8.75,E. coli
-0.00000001,8.71,E. coli
-0.0000001,8.64,E. coli
-0.000001,8.67,E. coli
-0.00001,8.5,E. coli
-0.0001,8.74,E. coli
-0.01,8.19,E. coli
-0.1,6.99,E. coli
-0,4.79,Gut slurry
-1.00E-11,4.6,Gut slurry
-1.00E-10,4.68,Gut slurry
-0.000000001,6.61,Gut slurry
-0.00000001,5.42,Gut slurry
-0.0000001,6.68,Gut slurry
-0.000001,4.78,Gut slurry
-0.00001,6.7,Gut slurry
-0.0001,4.62,Gut slurry
-0.01,5.5,Gut slurry
-0.1,6.75,Gut slurry
+Dilution,pH,Inoculum,Buffer
+0,8.58,E. coli,Potassium Phosphate
+1.00E-11,8.65,E. coli,Potassium Phosphate
+1.00E-10,8.78,E. coli,Potassium Phosphate
+0.000000001,8.75,E. coli,Potassium Phosphate
+0.00000001,8.71,E. coli,Potassium Phosphate
+0.0000001,8.64,E. coli,Potassium Phosphate
+0.000001,8.67,E. coli,Potassium Phosphate
+0.00001,8.5,E. coli,Potassium Phosphate
+0.0001,8.74,E. coli,Potassium Phosphate
+0.01,8.19,E. coli,Potassium Phosphate
+0.1,6.99,E. coli,Potassium Phosphate
+0,4.79,Gut slurry,Potassium Phosphate
+1.00E-11,4.6,Gut slurry,Potassium Phosphate
+1.00E-10,4.68,Gut slurry,Potassium Phosphate
+0.000000001,6.61,Gut slurry,Potassium Phosphate
+0.00000001,5.42,Gut slurry,Potassium Phosphate
+0.0000001,6.68,Gut slurry,Potassium Phosphate
+0.000001,4.78,Gut slurry,Potassium Phosphate
+0.00001,6.7,Gut slurry,Potassium Phosphate
+0.0001,4.62,Gut slurry,Potassium Phosphate
+0.01,5.5,Gut slurry,Potassium Phosphate
+0.1,6.75,Gut slurry,Potassium Phosphate
+0,8.89,E. coli,MOPS
+2E-11,8.85,E. coli,MOPS
+2E-10,8.91,E. coli,MOPS
+0.000000002,8.91,E. coli,MOPS
+0.00000002,8.7,E. coli,MOPS
+0.0000002,8.86,E. coli,MOPS
+0.000002,8.93,E. coli,MOPS
+0.00002,8.88,E. coli,MOPS
+0.0002,8.88,E. coli,MOPS
+0.002,8.82,E. coli,MOPS
+0.02,6.59,E. coli,MOPS
+0,4.57,Gut slurry,MOPS
+2E-11,4.55,Gut slurry,MOPS
+2E-10,7.52,Gut slurry,MOPS
+0.000000002,4.57,Gut slurry,MOPS
+0.00000002,7.46,Gut slurry,MOPS
+0.0000002,4.56,Gut slurry,MOPS
+0.000002,4.54,Gut slurry,MOPS
+0.00002,4.55,Gut slurry,MOPS
+0.0002,4.58,Gut slurry,MOPS
+0.002,4.71,Gut slurry,MOPS
+0.02,6.63,Gut slurry,MOPS
