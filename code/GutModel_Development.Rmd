@@ -50,10 +50,11 @@ theme_set(theme_classic() +
 ```{r}
 buffer <- read.table(here("data", "gut_buffer_pH.csv"), header = TRUE, sep = ",")
 
-Buffer <- ggplot(buffer, aes(x = log(Dilution, 10), y = pH, group = Inoculum, color = Inoculum))+
+Buffer <- ggplot(subset(buffer, Buffer == "MOPS"), aes(x = log(Dilution, 10), y = pH))+
   scale_color_manual(values = c("black", "red"))+
   theme(legend.position = "top", legend.title = element_blank())+
-  geom_point()+
+  geom_point(aes(group = Inoculum, color = Inoculum), shape = 4)+
+  geom_point(subset(buffer, Buffer == "Potassium Phosphate"), mapping = aes (x = log(Dilution, 10), y = pH, group = Inoculum, color = Inoculum))+
   xlab("log(buffer(M))")+
   ylab("pH")+
   ylim(c(4, 9))+
