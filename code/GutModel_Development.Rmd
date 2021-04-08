@@ -57,14 +57,13 @@ Buffer <- ggplot(subset(buffer, Buffer == "MOPS"), aes(x = log(Dilution, 10), y 
   geom_point(subset(buffer, Buffer == "Potassium Phosphate"), mapping = aes (x = log(Dilution, 10), y = pH, group = Inoculum, shape = Inoculum, color = Buffer))+
   geom_point(subset(buffer, Buffer == "MES"), mapping = aes (x = log(Dilution, 10), y = pH, group = Inoculum, shape = Inoculum, color = Buffer))+
   geom_point(subset(buffer, Buffer == "Bis-Tris"), mapping = aes (x = log(Dilution, 10), y = pH, group = Inoculum, shape = Inoculum, color = Buffer))+
-  scale_color_manual(name = "Buffer", values = c("black", "red", "blue", "orange"), labels = c("MOPS", "Potassium Phosphate", "MES", "Bis-Tris"))+
+  scale_color_manual(name = "Buffer", values = c("black", "red", "blue", "orange"), labels = c("Bis-Tris","MES","MOPS", "Potassium Phosphate"))+
   xlab("log(buffer(M))")+
   ylab("pH")+
   ylim(c(4, 9))+
   xlim(c(-12, 0))
 
 Buffer
-
 
 ggsave(here("output", "Buffer_pH.pdf"), dpi = 400, width = 6, height = 4)
 ggsave(here("output", "Buffer_pH.png"), dpi = 400, width = 6, height = 4)
