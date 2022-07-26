@@ -1,0 +1,130 @@
+---
+title: "ARO_Gut_Villi"
+output: html_document
+date: '2022-07-25'
+---
+
+```{r setup, include = FALSE}
+rm(list=ls())
+getwd()
+```
+
+```{r}
+package.list <- c("png", "vegan", "ggplot2", "ggpubr", "cowplot", "ggpmisc", "scales", "fitdistrplus", "tidyr", "ade4", "viridis", "gplots", "BiodiversityR", "indicspecies", "knitr", "here", "dplyr", "BiocManager", "car", "here", "actuar", "tibble", "scales", "dplyr", "nlme", "pander", "Rcpp")
+
+for (package in package.list) {
+  if (!require(package, character.only=T, quietly=T)) { 
+    install.packages(package)
+    library(package, character.only=T)
+  } }
+
+#BiocManager::valid()
+#BiocManager::install("flowCore")
+#BiocManager::install("ggcyto")
+#BiocManager::install()
+```
+
+```{r figure_setup}
+my.cols <- RColorBrewer::brewer.pal(n = 4, name = "Greys")[3:4]
+
+# Set theme for figures in the paper
+theme_set(theme_classic() + 
+  theme(axis.title = element_text(size = 16),
+        axis.title.x = element_text(margin = margin(t = 15, b = 15)),
+        axis.title.y = element_text(margin = margin(l = 15, r = 15)),
+        axis.text = element_text(size = 14),
+        axis.text.x = element_text(margin = margin(t = 5)),
+        axis.text.y = element_text(margin = margin(r = 5)),
+        #axis.line.x = element_line(size = 1),
+        #axis.line.y = element_line(size = 1),
+        axis.line.x = element_blank(),
+        axis.line.y = element_blank(),
+        axis.ticks.x = element_line(size = 1),
+        axis.ticks.y = element_line(size = 1),
+        axis.ticks.length = unit(.1, "in"),
+        panel.border = element_rect(color = "black", fill = NA, size = 1.5),
+        legend.text = element_text(size = 10),
+        legend.title = element_blank(),
+        strip.text = element_text(size = 14),
+        strip.background = element_blank()
+        ))
+```
+
+```{r}
+CFU_data <- read.csv("../data/Villi_pilot/CFU_Villi_Pilot.csv", header = TRUE)
+CFU_data$N_7 <- CFU_data$N_.7 *10^7
+CFU_data$N_8 <- CFU_data$N_.7 *10^8
+CFU_data$N_avg <- (CFU_data$N_7 + CFU_data$N_8)/2
+
+CFU <- ggplot(data = subset(CFU_data, CFU_data$Set == 1), aes(x = Day, y = log10(N_avg), group = Villi, color = Villi))+
+  geom_point()+
+  scale_y_continuous(labels = label_math(expr = 10^.x, format = force))+
+  ylab("Microbial Abundance (cells/mL)")
+#  geom_smooth(method = "lm", formula = y~x)
+
+CFU
+```
+
+
+```{r}
+CFU_data <- read.csv("../data/Villi_pilot/CFU_Villi_Mock.csv", header = TRUE)
+CFU_data$N_7 <- CFU_data$N_.7 *10^7
+CFU_data$N_8 <- CFU_data$N_.7 *10^8
+CFU_data$N_avg <- (CFU_data$N_7 + CFU_data$N_8)/2
+
+CFU <- ggplot(data = subset(CFU_data, CFU_data$Set == 1), aes(x = Day, y = log10(N_avg), group = Villi, color = Villi))+
+  geom_point()+
+  scale_y_continuous(labels = label_math(expr = 10^.x, format = force))+
+  ylab("Microbial Abundance (cells/mL)")
+#  geom_smooth(method = "lm", formula = y~x)
+
+CFU
+```
+
+```{r}
+Ecoli_data <- read.csv("../data/Villi_pilot/Ecoli_Villi_Mock.csv", header = TRUE)
+
+Ecoli <- ggplot(data = Ecoli_data, aes(x = Day, y = log10(N), group = Villi, color = Villi))+
+  geom_point()+
+  scale_y_continuous(labels = label_math(expr = 10^.x, format = force))+
+  ylab("E. coli Abundance (cells/mL)")
+#  geom_smooth(method = "lm", formula = y~x)
+
+Ecoli
+
+ecoli.rm <- lme(N ~ Villi * Day, random = ~1 | Gut, correlation = corAR1(form = ~ 1 | Gut), data = Ecoli_data)
+summary(ecoli.rm)
+anova(ecoli.rm)
+
+#set.caption("RMANOVA for E. coli addition")
+#pander(anova(ecoli.rm))
+```
+
+```{r}
+EP_data <- read.csv("../data/Villi_Pilot/eco.data_villi.csv", header = TRUE)
+EP_data$Int <- factor(EP_data$Int, levels = c("Pre", "Post"))
+EP_data$Villi <- factor(EP_data$Villi, levels = c("No", "High"))
+
+EP_Int <- ggplot(data = EP_data, aes(x = Int, y = Avg))+
+  geom_boxplot()+
+  ylab("Average Well Response (OD590)")+
+  xlab("E. coli innoculation")
+
+EP_Int
+
+EP_Villi <- ggplot(data = EP_data, aes(x = Villi, y = Avg))+
+  geom_boxplot()+
+  ylab("Average Well Response (OD590)")+
+  xlab("Villi level")
+
+EP_Villi
+
+EP <- ggplot(data = EP_data, aes(x = Villi, y = Avg, fill = Int))+
+  geom_boxplot()+
+  ylab("Average Well Response (OD590)")
+
+EP
+
+t.test(Avg ~ Villi, data = EP_data, alternative = "two.sided")
+t.test(Avg ~ Int, data = EP_data, paired = TRUE, alternative = "two.sided")
+```

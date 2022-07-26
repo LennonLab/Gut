@@ -8,14 +8,14 @@ output: html_document
 ```{r setup, include=FALSE}
 rm(list=ls())
 getwd()
-require("sfsmisc")
-require("ggplot2")
-require("ggpmisc")
-require("ggpubr")
-require("cowplot")
-require("bbmle")
-require("ggpubr")
-require("igraph")
+
+package.list <- c("sfsmisc", "ggplot2", "ggpmisc", "ggpubr", "cowplot", "bbmle", "igraph", "minpack.lm")
+
+for (package in package.list) {
+  if (!require(package, character.only=T, quietly=T)) { 
+    install.packages(package)
+    library(package, character.only=T)
+  } }
 ```
 ## Including Plots
 
@@ -56,16 +56,16 @@ CDF <- function(data){
 }
 
 RTD <- function(X){
-  X <- X[7:66,]
-  X$E <- X$Conc/(integrate.xy(X$Time, X$Conc, a = 3, b= 32.5))
+  X$E <- X$Conc/(integrate.xy(X$Time, X$Conc, a = 0, b= 30))
   X[3,"E"]
   f <- X[3,"E"]
-  x <- 3.5
-  while (x < 33){
-    f <- c(f, integrate.xy(X$Time, X$E, a = 3, b= x))
+  x <- 0.5
+  while (x < 30.5){
+    f <- c(f, integrate.xy(X$Time, X$E, a = 0, b= x))
     x <-  x + 0.5
   }
   X$f <- f
+  X$tE <- X$E * X$Time
   return(X)
 }
 ```
@@ -73,30 +73,130 @@ RTD <- function(X){
 
 #Load data and determine medians by hand with numerical integration
 ```{r}
-NV_20200212_25 <- read.csv("../data/RTD/20200212_NV_RTD.csv", header = TRUE, sep = ",")
+mean_tau <- data.frame(matrix(ncol = 3, nrow = 0))
+
+NV_20200212_25 <- read.csv("../data/RTD/20200212_NV_RTD_trim.csv", header = TRUE, sep = ",")
 NV_20200212_25 <- RTD(NV_20200212_25)
 
-NV_20200218_25 <- read.csv("../data/RTD/20200218_NV_RTD.csv", header = TRUE, sep = ",")
+nlslm <- nlsLM(E~sqrt((va * pe)/(4*pi*(Time^3))) * exp((-pe*(va-Time)^2)/(4*va*Time)), start = list(va = 10, pe = 20), data = NV_20200212_25)
+
+NV_20200212_25_Tau <- integrate.xy(NV_20200212_25$Time, NV_20200212_25$tE, a = 0, b= 30)
+model<-nls((NV_20200212_25$E~sqrt((va * pe)/(4*pi*(NV_20200212_25$Time^3))) * exp((-pe*(va-NV_20200212_25$Time)^2)/(4*va*NV_20200212_25$Time))),
+ start=list(va = 10, pe = 20), data = NV_20200212_25, trace=TRUE)
+mean_tau <- rbind(mean_tau, c("NV_20200212_25", 25, 0, NV_20200212_25_Tau, coef(model)[1], coef(model)[2]))
+
+colnames(mean_tau) <- c("Name", "Theor_RT", "Villi", "Exp_RT", "Va", "Pe")
+
+NV_20200218_25 <- read.csv("../data/RTD/20200218_NV_RTD_trim.csv", header = TRUE, sep = ",")
 NV_20200218_25 <- RTD(NV_20200218_25)
+NV_20200218_25_Tau <- integrate.xy(NV_20200218_25$Time, NV_20200218_25$tE, a = 0, b= 30)
+model<-nls((NV_20200218_25$E~sqrt((va * pe)/(4*pi*(NV_20200218_25$Time^3))) * exp((-pe*(va-NV_20200218_25$Time)^2)/(4*va*NV_20200218_25$Time))),
+ start=list(va = 10, pe = 10), data = NV_20200218_25, trace=TRUE)
+mean_tau <- rbind(mean_tau, c("NV_20200218_25", 25, 0, NV_20200218_25_Tau, coef(model)[1], coef(model)[2]))
 
-NV_20200211_14 <- read.csv("../data/RTD/20200211_NV_RTD.csv", header = TRUE, sep = ",")
+NV_20200211_14 <- read.csv("../data/RTD/20200211_NV_RTD_trim.csv", header = TRUE, sep = ",")
 NV_20200211_14 <- RTD(NV_20200211_14)
+NV_20200211_14_Tau <- integrate.xy(NV_20200211_14$Time, NV_20200211_14$tE, a = 3, b= 32.5)
+model<-nls((NV_20200211_14$E~sqrt((va * pe)/(4*pi*(NV_20200211_14$Time^3))) * exp((-pe*(va-NV_20200211_14$Time)^2)/(4*va*NV_20200211_14$Time))),
+ start=list(va = 10, pe = 10), data = NV_20200211_14, trace=TRUE)
+mean_tau <- rbind(mean_tau, c("NV_20200211_14", 14, 0, NV_20200211_14_Tau, coef(model)[1], coef(model)[2]))
 
-NV_20200219_14 <- read.csv("../data/RTD/20200219_NV_RTD.csv", header = TRUE, sep = ",")
+NV_20200219_14 <- read.csv("../data/RTD/20200219_NV_RTD_trim.csv", header = TRUE, sep = ",")
 NV_20200219_14 <- RTD(NV_20200219_14)
+NV_20200219_14_Tau <- integrate.xy(NV_20200219_14$Time, NV_20200219_14$tE, a = 3, b= 32.5)
+model<-nls((NV_20200219_14$E~sqrt((va * pe)/(4*pi*(NV_20200219_14$Time^3))) * exp((-pe*(va-NV_20200219_14$Time)^2)/(4*va*NV_20200219_14$Time))),
+ start=list(va = 10, pe = 10), data = NV_20200219_14, trace=TRUE)
+mean_tau <- rbind(mean_tau, c("NV_20200219_14", 14, 0, NV_20200219_14_Tau, coef(model)[1], coef(model)[2]))
 
-HV_20200218_25 <- read.csv("../data/RTD/20200218_HV_RTD.csv", header = TRUE, sep = ",")
+HV_20200218_25 <- read.csv("../data/RTD/20200218_HV_RTD_trim.csv", header = TRUE, sep = ",")
 HV_20200218_25 <- RTD(HV_20200218_25)
+HV_20200218_25_Tau <- integrate.xy(HV_20200218_25$Time, HV_20200218_25$tE, a = 3, b= 32.5)
+model<-nls((HV_20200218_25$E~sqrt((va * pe)/(4*pi*(HV_20200218_25$Time^3))) * exp((-pe*(va-HV_20200218_25$Time)^2)/(4*va*HV_20200218_25$Time))),
+ start=list(va = 10, pe = 10), data = HV_20200218_25, trace=TRUE)
+mean_tau <- rbind(mean_tau, c("HV_20200218_25", 25, 296, HV_20200218_25_Tau, coef(model)[1], coef(model)[2]))
 
-HV_20200212_25 <- read.csv("../data/RTD/20200212_HV_RTD.csv", header = TRUE, sep = ",")
+HV_20200212_25 <- read.csv("../data/RTD/20200212_HV_RTD_trim.csv", header = TRUE, sep = ",")
 HV_20200212_25 <- RTD(HV_20200212_25)
+HV_20200212_25_Tau <- integrate.xy(HV_20200212_25$Time, HV_20200212_25$tE, a = 3, b= 32.5)
+model<-nls((HV_20200212_25$E~sqrt((va * pe)/(4*pi*(HV_20200212_25$Time^3))) * exp((-pe*(va-HV_20200212_25$Time)^2)/(4*va*HV_20200212_25$Time))),
+ start=list(va = 10, pe = 10), data = HV_20200212_25, trace=TRUE)
+mean_tau <- rbind(mean_tau, c("HV_20200212_25", 25, 296, HV_20200212_25_Tau, coef(model)[1], coef(model)[2]))
 
-HV_20200211_14 <- read.csv("../data/RTD/20200211_HV_RTD.csv", header = TRUE, sep = ",")
+HV_20200211_14 <- read.csv("../data/RTD/20200211_HV_RTD_trim.csv", header = TRUE, sep = ",")
 HV_20200211_14 <- RTD(HV_20200211_14)
+HV_20200211_14_Tau <- integrate.xy(HV_20200211_14$Time, HV_20200211_14$tE, a = 3, b= 32.5)
+model<-nls((HV_20200211_14$E~sqrt((va * pe)/(4*pi*(HV_20200211_14$Time^3))) * exp((-pe*(va-HV_20200211_14$Time)^2)/(4*va*HV_20200211_14$Time))),
+ start=list(va = 10, pe = 10), data = HV_20200211_14, trace=TRUE)
+mean_tau <- rbind(mean_tau, c("HV_20200211_14", 14, 296, HV_20200211_14_Tau, coef(model)[1], coef(model)[2]))
 
-HV_20200219_14 <- read.csv("../data/RTD/20200219_HV_RTD.csv", header = TRUE, sep = ",")
+HV_20200219_14 <- read.csv("../data/RTD/20200219_HV_RTD_trim.csv", header = TRUE, sep = ",")
 HV_20200219_14 <- RTD(HV_20200219_14)
+HV_20200219_14_Tau <- integrate.xy(HV_20200219_14$Time, HV_20200219_14$tE, a = 3, b= 32.5)
+model<-nls((HV_20200219_14$E~sqrt((va * pe)/(4*pi*(HV_20200219_14$Time^3))) * exp((-pe*(va-HV_20200219_14$Time)^2)/(4*va*HV_20200219_14$Time))),
+ start=list(va = 10, pe = 10), data = HV_20200219_14, trace=TRUE)
+mean_tau <- rbind(mean_tau, c("HV_20200219_14", 14, 296, HV_20200219_14_Tau, coef(model)[1], coef(model)[2]))
 
+
+Total <- data.frame(HV_20200211_14$Time)
+colnames(Total) <- ("Time")
+Total$HV_14 <- (HV_20200211_14$E + HV_20200219_14$E)/2
+Total$HV_25 <- (HV_20200212_25$E + HV_20200218_25$E)/2
+Total$NV_14 <- (NV_20200211_14$E + NV_20200219_14$E)/2
+Total$NV_25 <- (NV_20200212_25$E + NV_20200218_25$E)/2
+
+mean_tau$Exp_RT <- as.numeric(mean_tau$Exp_RT)
+mean_tau$Pe <- as.numeric(mean_tau$Pe)
+mean_tau$Va <- as.numeric(mean_tau$Va)
+mean_tau$Theor_RT <- as.character(mean_tau$Theor_RT)
+mean_tau$Villi <- as.character(mean_tau$Villi)
+tau_villi <- ggplot(mean_tau, aes(x = Villi, y = Exp_RT, fill = Theor_RT))+
+  geom_boxplot()+
+  xlab("# of Villi")+
+  ylab("Experimental Mean Tau")+
+  guides(fill=guide_legend(title="Theoretical \nMean Tau"))
+
+tau_villi
+
+ggsave("../output/Tau_by_Villi.pdf")
+ggsave("../output/Tau_by_Villi.png")
+
+
+tau_tau <- ggplot(mean_tau, aes(x = Theor_RT, y = Exp_RT, fill = Villi))+
+  geom_boxplot()+
+  xlab("Theoretical \nMean Tau")+
+  ylab("Experimental Mean Tau")+
+  guides(fill=guide_legend(title="# of Villi"))
+
+tau_tau
+
+ggsave("../output/Tau_by_Tau.pdf")
+ggsave("../output/Tau_by_Tau.png")
+
+Va_tau <- ggplot(mean_tau, aes(x = Theor_RT, y = Va, fill = Villi))+
+  geom_boxplot()+
+  xlab("Theoretical \nMean Tau")+
+  ylab("Va")+
+  guides(fill=guide_legend(title="# of Villi"))
+
+Va_tau
+
+ggsave("../output/Va_by_Tau.pdf")
+ggsave("../output/Va_by_Tau.png")
+
+Pe_tau <- ggplot(mean_tau, aes(x = Theor_RT, y = Pe, fill = Villi))+
+  geom_boxplot()+
+  xlab("Theoretical \nMean Tau")+
+  ylab("Pe")+
+  guides(fill=guide_legend(title="# of Villi"))
+
+Pe_tau
+
+ggsave("../output/Pe_by_Tau.pdf")
+ggsave("../output/Pe_by_Tau.png")
+```
+
+
+```{r}
 HV_20201115_25_A <- read.csv("../data/RTD/20201115A_HV_RTD.csv", header = TRUE, sep = ",")
 HV_20201115_25_A <- RTD(HV_20201115_25_A)
 
@@ -105,16 +205,6 @@ HV_20201115_25_B <- RTD(HV_20201115_25_B)
 
 HV_20201115_25_C <- read.csv("../data/RTD/20201115C_HV_RTD.csv", header = TRUE, sep = ",")
 HV_20201115_25_C <- RTD(HV_20201115_25_C)
-
-
-
-Total <- data.frame(HV_20200211_14$Time)
-colnames(Total) <- ("Time")
-Total$HV_14 <- (HV_20200211_14$E + HV_20200219_14$E)/2
-Total$HV_25 <- (HV_20200212_25$E + HV_20200218_25$E+ HV_20201115_25_A$E + HV_20201115_25_B$E)/4
-Total$NV_14 <- (NV_20200211_14$E + NV_20200219_14$E)/2
-Total$NV_25 <- (NV_20200212_25$E + NV_20200218_25$E)/2
-
 ```
 
 
@@ -142,6 +232,44 @@ F_HV
 #qualitative replicate comparison
 
 ```{r}
+Conc <- function(x, va, pe){
+  y <- sqrt((va * pe)/(4*pi*x^3)) * exp((-pe*(va-x)^2)/(4*va*x))
+}
+
+x <- 1:30
+y <- Conc(x, va_NV_25-2, pe_NV_25-10)
+
+model <- as.data.frame(x)
+model$y <- y
+
+plot <- ggplot(model, aes(x = x,y = y))+
+  geom_point()+
+  geom_point(data = NV_20200218_25, mapping = aes(x = Time, y = E, col = "red"))
+
+plot
+
+
+
+x <- 1:30
+y <- Conc(x, mean_tau[2, "Va"], mean_tau[2, "Pe"])
+
+model <- as.data.frame(x)
+model$y <- y
+
+plot <- ggplot(model, aes(x = x,y = y, color = "model"))+
+  geom_point()+
+  geom_point(data = NV_20200218_25, mapping = aes(x = Time, y = E, color = "exp"))+
+  xlab("Time (m)")+
+  ylab("E(t)")+
+  scale_color_manual("Data Set", limits=c("model", "exp"), values = c("black","red")) +
+  guides(colour = guide_legend(override.aes = list(pch = c(16, 16), fill = c("black", "red"))))
+  
+
+plot
+
+```
+
+```{r}
 
 #Added weird aes as a test of legends
 NV_25 <- ggplot(NV_20200212_25, aes(x =Time, y = E))+
@@ -150,17 +278,23 @@ NV_25 <- ggplot(NV_20200212_25, aes(x =Time, y = E))+
   geom_line(data = Total, mapping = aes(x = Time, y = NV_25, linetype = 'average', color = 'average'))+
   xlab("t")+
   ylab("E(t)")+
-  scale_colour_manual(name = 'color', values =c('replicate'='black','average'='red'), labels = c('Average','Replicate'))
-  scale_linetype_manual(name = 'linetype', values = c('replicate' = 'dashed', 'average' ='solid'), labels = c('Average', 'Replicate'))
+  scale_colour_manual(name = 'color', values =c('replicate'='black','average'='red'), labels = c('Average','Replicate'))+
+  scale_linetype_manual(name = 'linetype', values = c('replicate' = 'dashed', 'average' ='solid'),
+                        labels = c('Average', 'Replicate'))
 
 NV_25
 
 NV_14 <- ggplot(NV_20200211_14, aes(x = Time, y = E))+
-  geom_line()+
-  geom_line(data = NV_20200219_14, mapping = aes(x = Time, y = E))+
-  geom_line(data = Total, mapping = aes(x = Time, y = NV_14), col = "red")+
+  geom_line(mapping = aes(linetype = 'replicate', color = 'replicate'))+
+  geom_line(data = NV_20200219_14, mapping = aes(x = Time, y = E, linetype = 'replicate', color = 'replicate'))+
+  geom_line(data = Total, mapping = aes(x = Time, y = NV_14, linetype = 'average', color = 'average'))+
   xlab("t")+
-  ylab("E(t)")
+  ylab("E(t)")+
+  scale_colour_manual(name = 'color', values =c('replicate'='black','average'='red'), labels = c('Average','Replicate'))+
+  scale_linetype_manual(name = 'linetype', values = c('replicate' = 'dashed', 'average' ='solid'),
+                        labels = c('Average', 'Replicate'))
+
+NV_14
 
 HV_25 <- ggplot(HV_20200212_25, aes(x = Time, y = E))+
   geom_line()+
@@ -239,10 +373,9 @@ ggsave("../output/Replication_CDF.png")
 #qualitative RT comparison within villi treatments
 ```{r}
 
-#NV (blue is 14, black is 25)
+#NV (red is 14, black is 25)
 NV <- ggplot(NV_20200218_25, aes(x = Time, y = E))+
   geom_point(size=2,alpha=0.6)+
-  geom_line()+
   geom_point(data = NV_20200212_25, mapping = aes(x = Time, y = E), size =2, alpha = 0.6)+
   geom_point(data = NV_20200211_14, mapping = aes(x = Time, y = E), size =2, alpha = 0.6, col = "red")+
   geom_point(data = NV_20200219_14, mapping = aes(x = Time, y = E), size = 2, alpha = 0.6, col = "red")+
@@ -250,35 +383,44 @@ NV <- ggplot(NV_20200218_25, aes(x = Time, y = E))+
   #Peak
   geom_vline(xintercept = 3, col = "green")+
   geom_vline(xintercept = mean(c(NV_20200218_25$Time[NV_20200218_25$E == max(NV_20200218_25$E)],
-                                 NV_20200212_25$Time[NV_20200212_25$E == max(NV_20200212_25$E)])))+
+             NV_20200212_25$Time[NV_20200212_25$E == max(NV_20200212_25$E)])), size = 1.5, linetype = "dashed")+
   geom_vline(xintercept = mean(c(NV_20200211_14$Time[NV_20200211_14$E == max(NV_20200211_14$E)],
-                                 NV_20200219_14$Time[NV_20200219_14$E == max(NV_20200219_14$E)col = "red")+
+             NV_20200219_14$Time[NV_20200219_14$E == max(NV_20200219_14$E)])),col = "red", size = 1.5,
+             linetype = "dashed")+ 
   #Median
-  geom_vline(xintercept = mean(c(11.799, 10.177)), size = 1.5)+
-  geom_vline(xintercept = mean(c(7.982, 9.507)), size = 1.5, col = "red")+
-  ylab("E(t)")
+  geom_vline(xintercept = mean(c(NV_20200212_25_Tau, NV_20200218_25_Tau)), size = 1.5)+
+  geom_vline(xintercept = mean(c(NV_20200211_14_Tau, NV_20200219_14_Tau)), size = 1.5, col = "red")+
+  ylab("E(t)")+
+  ggtitle("NV (red is 14, black is 25)")
 
 NV
 
 ggsave("../output/NV_RT.pdf")
 ggsave("../output/NV_RT.png")
 
-#HV (blue is 14, black is 25)
+#HV (red is 14, black is 25)
 HV <- ggplot(HV_20200218_25, aes(x = Time, y = E))+
   geom_point(size=2,alpha=0.6)+
   geom_point(data = HV_20200212_25, mapping = aes(x = Time, y = E), size =2, alpha = 0.6)+
-  geom_point(data = HV_20200211_14, mapping = aes(x = Time, y = E), size =2, alpha = 0.6, col = "blue")+
-  geom_point(data = HV_20200219_14, mapping = aes(x = Time, y = E), size = 2, alpha = 0.6, col = "blue")+
+  geom_point(data = HV_20200211_14, mapping = aes(x = Time, y = E), size =2, alpha = 0.6, col = "red")+
+  geom_point(data = HV_20200219_14, mapping = aes(x = Time, y = E), size = 2, alpha = 0.6, col = "red")+
   #Peak
+  geom_vline(xintercept = 3, col = "green")+
   geom_vline(xintercept = mean(c(HV_20200218_25$Time[HV_20200218_25$E == max(HV_20200218_25$E)],
         HV_20200212_25$Time[HV_20200212_25$E == max(HV_20200212_25$E)])), size = 1.5, linetype = "dashed")+
   geom_vline(xintercept = mean(c(HV_20200211_14$Time[HV_20200211_14$E == max(HV_20200211_14$E)],
         HV_20200219_14$Time[HV_20200219_14$E == max(HV_20200219_14$E)])),col = "red", size = 1.5, linetype = "dashed")+
   #Median
-  geom_vline(xintercept = mean(c(9.456, 9.507)), size = 1.5)+
-  geom_vline(xintercept = mean(c(9.125, 7.548)), size = 1.5, col = "red")+
+  geom_vline(xintercept = mean(c(HV_20200212_25_Tau, HV_20200218_25_Tau)), size = 1.5)+
+  geom_vline(xintercept = mean(c(HV_20200211_14_Tau, HV_20200219_14_Tau)), size = 1.5, col = "red")+
   xlab("t") +
-  ylab("E(t)")
+  ylab("E(t)")+
+  ggtitle("HV (red is 14, black is 25)")
+
+HV
+
+ggsave("../output/HV_RT.pdf")
+ggsave("../output/HV_RT.png")
 
 ggarrange(NV, HV, labels = c("NV", "HV"), ncol = 1, nrow = 2)
 ggsave("../output/RT.pdf")
@@ -384,7 +526,8 @@ Median_avg <- ggplot(Total, aes(x = Time, y = HV_25))+
   geom_vline(aes(xintercept = mean(c(9.125, 7.548))), size = 1.5, col = "black", linetype = "solid")+
   geom_vline(aes(xintercept = mean(c(7.982, 9.507))), size = 1.5, col = "red", linetype = "solid")+
   scale_color_manual(name = " # villi", labels = c('0 villi','296 villi'),values =c('HV'='black','NV'='red'))+
-  scale_linetype_manual(name = expression(paste(tau)), values = c('RT_25' = 'dashed', 'RT_14' ='solid'), labels = c("14 minutes","25 minutes"))+
+  scale_linetype_manual(name = expression(paste(tau)), values = c('RT_25' = 'dashed', 'RT_14' ='solid'),
+                        labels = c("14 minutes","25 minutes"))+
   guides(color = guide_legend(override.aes = list(linetype=c(1,1), size = c(5,5))))
 
 
