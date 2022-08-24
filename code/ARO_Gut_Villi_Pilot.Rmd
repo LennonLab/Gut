@@ -7,10 +7,11 @@ date: '2022-07-25'
 ```{r setup, include = FALSE}
 rm(list=ls())
 getwd()
+
 ```
 
 ```{r}
-package.list <- c("png", "vegan", "ggplot2", "ggpubr", "cowplot", "ggpmisc", "scales", "fitdistrplus", "tidyr", "ade4", "viridis", "gplots", "BiodiversityR", "indicspecies", "knitr", "here", "dplyr", "BiocManager", "car", "here", "actuar", "tibble", "scales", "dplyr", "nlme", "pander", "Rcpp")
+package.list <- c("png", "vegan", "ggplot2", "ggpubr", "cowplot", "ggpmisc", "scales", "fitdistrplus", "tidyr", "ade4", "viridis", "gplots", "BiodiversityR", "indicspecies", "knitr", "here", "dplyr", "BiocManager", "car", "here", "actuar", "tibble", "scales", "dplyr", "nlme", "pander", "Rcpp", "sfsmisc",  "bbmle", "igraph")
 
 for (package in package.list) {
   if (!require(package, character.only=T, quietly=T)) { 
@@ -44,42 +45,367 @@ theme_set(theme_classic() +
         axis.ticks.length = unit(.1, "in"),
         panel.border = element_rect(color = "black", fill = NA, size = 1.5),
         legend.text = element_text(size = 10),
-        legend.title = element_blank(),
+#        legend.title = element_blank(),
         strip.text = element_text(size = 14),
         strip.background = element_blank()
         ))
 ```
 
 ```{r}
-CFU_data <- read.csv("../data/Villi_pilot/CFU_Villi_Pilot.csv", header = TRUE)
-CFU_data$N_7 <- CFU_data$N_.7 *10^7
-CFU_data$N_8 <- CFU_data$N_.7 *10^8
-CFU_data$N_avg <- (CFU_data$N_7 + CFU_data$N_8)/2
-
-CFU <- ggplot(data = subset(CFU_data, CFU_data$Set == 1), aes(x = Day, y = log10(N_avg), group = Villi, color = Villi))+
-  geom_point()+
-  scale_y_continuous(labels = label_math(expr = 10^.x, format = force))+
-  ylab("Microbial Abundance (cells/mL)")
-#  geom_smooth(method = "lm", formula = y~x)
-
-CFU
+EP_fxn <- function(EP, Tau){
+  for(x in unique(EP$Sample)){
+    Tau$NumRes[Tau$Tau == x] <- EP$NumRes[EP$Tau == x]
+    Tau$AvgRes[Tau$Tau == x] <- EP$Avg[EP$Tau ==x]
+  }
+  
+  return(Tau)
+}
 ```
-
 
 ```{r}
-CFU_data <- read.csv("../data/Villi_pilot/CFU_Villi_Mock.csv", header = TRUE)
+BP_fxn <- function(CPMs, Tau, set){
+  ##extract whole experiment info from top of csv
+  
+  #date experiment was run
+  date <- as.Date(as.character(CPMs[1,2]), "%m/%d/%Y")
+
+  
+  #date the standard was produced
+  date_std <- as.Date(as.character(CPMs[2,2]), "%m/%d/%Y")
+  
+  #DPM of the standard at date of production
+  DPM_std <- as.double(as.character(CPMs[3,2]))
+  
+  #DPM of the standard based on scintillation counter on experiment date
+  DPM_curr <- as.double(as.character(CPMs[4,2]))
+  
+  #half life of tritium - 12.346 years
+  half_life <- as.double(as.character(CPMs[5,2]))
+  
+  #Mols of leucine in each tube based on hot leucine stock concentration
+  M_Leu <- as.double(as.character(CPMs[6,2]))
+  
+  #CPMs of the voucher on experiment date
+  Voucher <- as.double(as.character(CPMs[7,2]))
+  
+  ##remove whole experiment info from top of dataframe
+  CPMs <- CPMs[-c(1:9),]
+  colnames(CPMs) <- c("Sample", "CPM", "Kill")
+
+
+  ##calculate time from the experiment date to the standard production date
+  t <- as.numeric(date - date_std)/365
+  
+  ##calculate the expected DPMs of the standard based on t
+  DPM_exp <- (DPM_std)*exp((-0.693/half_life)*t)
+  
+  ##calculate scintillation efficiency as DPM ratio
+  efficiency <- DPM_curr/DPM_exp
+  
+  #divide CPMs into kill and sample dataframes
+  Kills <- subset(CPMs, Kill == "T")
+  CPMs <- subset(CPMs, Kill == "F")
+  
+  #convert CPMs to DPMs, DPMs = CPMs/efficiency
+  CPMs$CPM <- as.numeric(as.character(CPMs$CPM))
+  CPMs$DPM <- CPMs$CPM / efficiency
+  
+  Kills$CPM <- as.numeric(as.character(Kills$CPM))
+  Kills$DPM <- Kills$CPM / efficiency
+  
+  #average DPMs for each sample and add to Tau
+  for(x in unique(CPMs$Sample)){
+    Tau[Tau$Tau == x, "DPM"] <- as.numeric(mean(CPMs[CPMs$Sample == x, "DPM"]))
+  }
+
+  
+  #for each sample, subtract the corresponding kill DPM
+  for (x in unique(Tau$Tau)){
+    if(Tau[Tau$Tau == x, "Set"] == set){
+      Tau[Tau$Tau == x, "DPMKills"] <- Tau[Tau$Tau ==x, "DPM"] - (as.numeric(Kills[Kills$Sample == x, "CPM"])/efficiency)
+    }
+  }
+  
+  #Determine Mols Leucine based on MLeu_sample = MLeu * DPM/voucher
+  Tau$MLeu <- (M_Leu * Tau$DPMKills)/Voucher
+  
+  #Convert MLeu to ug C/L/hr
+  Tau$ugCLhr <- Tau$MLeu * 131.2 * (1/0.073)*0.86*2*1000000
+  
+  
+  Tau$uMChr <- Tau$ugCLhr *0.083333
+  
+  Tau$log_uMChr <- log(Tau$uMChr, 10)
+  
+  return(Tau)
+}
+```
+
+```{r}
+RTD <- function(X){
+  X$E <- X$Conc/(integrate.xy(X$Time, X$Conc, a = 0, b= 31))
+  X[3,"E"]
+  f <- X[3,"E"]
+  x <- 1
+  while (x <= 31){
+    f <- c(f, integrate.xy(X$Time, X$E, a = 0, b= x))
+    x <-  x + 1
+  }
+  X$f <- f
+  X$tE <- X$E * X$Time
+  return(X)
+}
+```
+
+```{r}
+Paint <- as.data.frame(read.csv("../data/Villi_Pilot/Paint_RTD.csv", header = TRUE))
+
+Paint$System <- as.factor(Paint$System)
+Paint$RPM <- as.factor(Paint$RPM)
+Paint$N <- Paint$Abs * Paint$X_10_9 * Paint$V
+
+#integrate.xy(Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 56,"Time"], Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 56,"N"], a = 0, b = 31)
+#integrate.xy(Paint[Paint$System == "Chemostat" & Paint$RPM == 56,"Time"], Paint[Paint$System == "Chemostat" & Paint$RPM == 56,"N"], a = 0, b = 31)
+#integrate.xy(Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 30,"Time"], Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 30,"N"], a = 0, b = 31)
+#integrate.xy(Paint[Paint$System == "Chemostat" & Paint$RPM == 30,"Time"], Paint[Paint$System == "Chemostat" & Paint$RPM == 30,"N"], a = 0, b = 31)
+#integrate.xy(Paint[Paint$System == "Chemostat" & Paint$RPM == 7,"Time"], Paint[Paint$System == "Chemostat" & Paint$RPM == 7,"N"], a = 0, b = 31)
+#integrate.xy(Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 7,"Time"], Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 7,"N"], a = 0, b = 31)
+#integrate.xy(Paint[Paint$System == "Chemostat" & Paint$RPM == 15,"Time"], Paint[Paint$System == "Chemostat" & Paint$RPM == 15,"N"], a = 0, b = 31)
+#integrate.xy(Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 15,"Time"], Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 15,"N"], a = 0, b = 31)
+# integrate.xy(Paint[Paint$System == "Chemostat" & Paint$RPM == 72,"Time"], Paint[Paint$System == "Chemostat" & Paint$RPM == 72,"N"], a = 0, b = 31)
+#integrate.xy(Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 72,"Time"], Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 72,"N"], a = 0, b = 31)
+
+tot.56.G <- sum(Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 56,"N"])
+end.56.G <- Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 56 & Paint$Time == 31, "N"]/tot.56.G
+
+tot.56.C <- sum(Paint[Paint$System == "Chemostat" & Paint$RPM == 56,"N"])
+end.56.C <- Paint[Paint$System == "Chemostat" & Paint$RPM == 56 & Paint$Time == 31, "N"]/tot.56.C
+
+tot.30.G <- sum(Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 30,"N"])
+end.30.G <- Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 30 & Paint$Time == 31, "N"]/tot.30.G
+
+tot.30.C <- sum(Paint[Paint$System == "Chemostat" & Paint$RPM == 30,"N"])
+end.30.C <- Paint[Paint$System == "Chemostat" & Paint$RPM == 30 & Paint$Time == 31, "N"]/tot.30.C
+
+tot.7.C <- sum(Paint[Paint$System == "Chemostat" & Paint$RPM == 7,"N"])
+end.7.C <- Paint[Paint$System == "Chemostat" & Paint$RPM == 7 & Paint$Time == 31, "N"]/tot.7.C
+
+tot.7.G <- sum(Paint[Paint$System == "Gut_NoVilli"& Paint$RPM == 7,"N"])
+end.7.G <- Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 7 & Paint$Time == 31, "N"]/tot.7.G
+
+tot.15.C <- sum(Paint[Paint$System == "Chemostat" & Paint$RPM == 15,"N"])
+end.15.C <- Paint[Paint$System == "Chemostat" & Paint$RPM == 15 & Paint$Time == 31, "N"]/tot.15.C
+
+tot.15.G <- sum(Paint[Paint$System == "Gut_NoVilli"& Paint$RPM == 15,"N"])
+end.15.G <- Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 15 & Paint$Time == 31, "N"]/tot.15.G
+
+tot.72.C <- sum(Paint[Paint$System == "Chemostat" & Paint$RPM == 72,"N"])
+end.72.C <- Paint[Paint$System == "Chemostat" & Paint$RPM == 72 & Paint$Time == 31, "N"]/tot.72.C
+
+tot.72.G <- sum(Paint[Paint$System == "Gut_NoVilli"& Paint$RPM == 72,"N"])
+end.72.G <- Paint[Paint$System == "Gut_NoVilli" & Paint$RPM == 72 & Paint$Time == 31, "N"]/tot.72.G
+
+Paint <- Paint[Paint$Time != 31,]
+Paint$TotN <- c(rep(tot.56.C, 31), rep(tot.56.G, 31), rep(tot.30.C, 31), rep(tot.30.G, 31), rep(tot.7.C, 31), rep(tot.7.G, 31),rep(tot.15.C, 31), rep(tot.15.G, 31),rep(tot.72.C, 31), rep(tot.72.G, 31))
+
+Paint$E <- Paint$N/Paint$TotN
+
+levels(Paint$RPM)
+Paint$RPM <- factor(Paint$RPM, levels = c('7', '15', '30', '56', '72'))
+Paint$V <- factor(Paint$V, levels = c('1.4', '3.1', '6.3', '12.5', '16.5'))
+
+
+
+paint <- ggplot(data = Paint, aes(x = Time, y = E,color = V, shape = System, group = interaction(System, V)))+
+  geom_point(cex = 3)+
+  geom_line()+
+  ylab("E(t)")+
+  xlab("Time (min")+
+  scale_color_manual("Flow rate (mL/min)",values=c("#354F90", "#BC0E4C","#FFC501", "purple", "black"))
+  
+                
+paint
+
+ggsave("../output/Paint_RTD.jpeg", width = 7, height = 5)
+ggsave("../output/Paint_RTD.pdf")
+
+flow.end <- data.frame(matrix(ncol = 4, nrow = 10))
+colnames(flow.end) <- c("V", "RPM", "Sys", "end.p")
+flow.end$V <- c(1.4,1.4, 3.1,3.1, 6.3,6.3, 12.5,12.5, 16.5, 16.5)
+flow.end$RPM <- c('7','7', '15', '15', '30','30', '56','56', '72', '72')
+flow.end$Sys <- c(rep(c("Chemostat", "Gut - No Villi"), 5))
+flow.end$end.p <- c(end.7.C, end.7.G, end.15.C, end.15.G, end.30.C, end.30.G, end.56.C, end.56.G, end.72.C, end.72.G)
+
+flow.end.gg <- ggplot(data = flow.end, aes(x = V, y = end.p, group = Sys, color = Sys))+
+  geom_point(cex = 3)+
+  geom_smooth(method = "lm")+
+  stat_poly_eq(aes(label = paste(stat(rr.label), "*\" and \"*", stat(p.value.label), sep = "")),
+                label.x = "right", label.y = "top", formula = y~x, parse = TRUE, size = 4)+
+  ylab("% particles remaining in reactor \n (30 min post-pulse)")+
+  xlab("Flow rate (mL/min)")+
+  scale_color_manual("Reactor",values=c("#BC0E4C","#354F90"))
+
+flow.end.gg
+
+ggsave("../output/Paint_end.p.jpeg")
+ggsave("../output/Paint_end.p.pdf")
+```
+
+```{r}
+Washout <- as.data.frame(read.csv("../data/Villi_pilot/Gut_Washout.csv", header = TRUE))
+
+Washout$Gut <- as.character(Washout$Gut)
+
+wo <- ggplot(data = Washout, aes(x = Hours, y = log(AbN, 10), color = Gut))+
+  geom_point()+
+  geom_line()+
+  ylab("Abundance (cells/mL)")+
+  xlab("Hours post-pulse")+
+  scale_color_manual("Flow rate (mL/min)",values=c("#e41a1c", "#377eb8","#4daf4a"))+
+  scale_y_continuous(labels = label_math(expr = 10^.x, format = force))
+  
+wo
+
+ggsave("../output/Gut_Washout.jpeg", width = 7, height = 4)
+ggsave("../output/Gut_Washout.pdf")
+```
+
+```{r}
+Tau <- as.data.frame(read.csv("../data/Villi_pilot/Sat_Curve.csv", header = TRUE))
+
+CPMs <- as.data.frame(read.csv("../data/Villi_pilot/20220802_Villi_Pilot_SatCurve_BP.csv", header = FALSE))
+
+  #date experiment was run
+  date <- as.Date(as.character(CPMs[1,2]), "%m/%d/%Y")
+
+  
+  #date the standard was produced
+  date_std <- as.Date(as.character(CPMs[2,2]), "%m/%d/%Y")
+  
+  #DPM of the standard at date of production
+  DPM_std <- as.double(as.character(CPMs[3,2]))
+  
+  #DPM of the standard based on scintillation counter on experiment date
+  DPM_curr <- as.double(as.character(CPMs[4,2]))
+  
+  #half life of tritium - 12.346 years
+  half_life <- as.double(as.character(CPMs[5,2]))
+  
+  #Mols of leucine in each tube based on hot leucine stock concentration
+  M_Leu <- as.double(as.character(CPMs[6,2]))
+  
+  #CPMs of the voucher on experiment date
+  Voucher <- as.double(as.character(CPMs[7,2]))
+  
+  ##remove whole experiment info from top of dataframe
+  CPMs <- CPMs[-c(1:9),]
+  colnames(CPMs) <- c("Sample", "CPM", "Kill")
+
+
+  ##calculate time from the experiment date to the standard production date
+  t <- as.numeric(date - date_std)/365
+  
+  ##calculate the expected DPMs of the standard based on t
+  DPM_exp <- (DPM_std)*exp((-0.693/half_life)*t)
+  
+  ##calculate scintillation efficiency as DPM ratio
+  efficiency <- DPM_curr/DPM_exp
+  
+  #divide CPMs into kill and sample dataframes
+  Kills <- subset(CPMs, Kill == "T")
+  CPMs <- subset(CPMs, Kill == "F")
+  
+  #convert CPMs to DPMs, DPMs = CPMs/efficiency
+  CPMs$CPM <- as.numeric(as.character(CPMs$CPM))
+  CPMs$DPM <- CPMs$CPM / efficiency
+  
+  Kills$CPM <- as.numeric(as.character(Kills$CPM))
+  Kills$DPM <- Kills$CPM / efficiency
+  
+  #average DPMs for each sample and add to Tau
+  for(x in unique(CPMs$Sample)){
+    Tau[Tau$Tau == x, "DPM"] <- as.numeric(mean(CPMs[CPMs$Sample == x, "DPM"]))
+  }
+
+  Kills <- rbind(Kills, Kills, Kills, Kills, Kills)
+  Kills$Sample <- c("High_30", "No_30", "High_50", "No_50", "High_70", "No_70", "High_90", "No_90", "High_110", "No_110")
+  set <- 1
+  #for each sample, subtract the corresponding kill DPM
+  for (x in unique(Tau$Tau)){
+    if(Tau[Tau$Tau == x, "Set"] == set){
+      Tau[Tau$Tau == x, "DPMKills"] <- Tau[Tau$Tau ==x, "DPM"] - (as.numeric(Kills[Kills$Sample == x, "CPM"])/efficiency)
+    }
+  }
+  
+  #Determine Mols Leucine based on MLeu_sample = MLeu * DPM/voucher
+  Tau$MLeu <- (M_Leu * Tau$DPMKills)/Voucher
+  
+  #Convert MLeu to ug C/L/hr
+  Tau$ugCLhr <- Tau$MLeu * 131.2 * (1/0.073)*0.86*2*1000000
+  
+  
+  Tau$uMChr <- Tau$ugCLhr *0.083333
+  
+  Tau$log_uMChr <- log(Tau$uMChr, 10)
+  
+  Tau$Conc <- c(30, 30, 50, 50, 70, 70, 90, 90, 110, 110)
+  Tau$Villi <- c("High", "No", "High", "No", "High", "No", "High", "No", "High", "No")
+
+BP <- ggplot(data = Tau, aes(x = Conc, y = uMChr, color = Villi))+
+  geom_point()+
+  ylab(expression(paste("Biomass Production ( ", mu, "M C/hr)")))+
+  xlab("Leucine (nM)")
+
+BP
+
+```
+
+```{r}
+Tau <- as.data.frame(read.csv("../data/Villi_pilot/Villi_Samples.csv", header = TRUE))
+
+#Tau <- EP_fxn(read.csv("../data/Villi_pilot/EcoPlate/eco.data_vp_24.txt", header = TRUE, sep = "\t"), Tau)
+Tau <- as.data.frame(BP_fxn(read.csv("../data/Villi_pilot/20220727_Villi_Pilot_BP.csv", header = FALSE), Tau, 1))
+
+Tau$Villi <- c("High", "High", "No", "No")
+
+BP <- ggplot(data = Tau, aes(x = Villi, y = uMChr))+
+  geom_boxplot()+
+  geom_point(color = "red")+
+  ylab(expression(paste("Biomass Production ( ", mu, "M C/hr)")))+
+  xlab("Villi Abundance")
+
+BP
+
+t.test(uMChr ~ Villi, data = Tau, alternative = "two.sided")
+t.test(Avg ~ Int, data = EP_data, paired = TRUE, alternative = "two.sided")
+
+```
+
+```{r}
+CFU_data <- read.csv("../data/Villi_pilot/CFU_Villi_Pilot.csv", header = TRUE)
 CFU_data$N_7 <- CFU_data$N_.7 *10^7
-CFU_data$N_8 <- CFU_data$N_.7 *10^8
+CFU_data$N_8 <- CFU_data$N_.8 *10^8
+
 CFU_data$N_avg <- (CFU_data$N_7 + CFU_data$N_8)/2
 
 CFU <- ggplot(data = subset(CFU_data, CFU_data$Set == 1), aes(x = Day, y = log10(N_avg), group = Villi, color = Villi))+
   geom_point()+
   scale_y_continuous(labels = label_math(expr = 10^.x, format = force))+
-  ylab("Microbial Abundance (cells/mL)")
+  ylab("Microbial Abundance (cells/mL)")+
 #  geom_smooth(method = "lm", formula = y~x)
+  scale_color_manual("Villi Density",labels = c(expression("9 villi/mm"^2), expression("0 villi/mm"^2)), values=c("#BC0E4C","#354F90"))
 
 CFU
+
+ggsave("../output/Gut_Washout.jpeg", width = 7, height = 4)
+ggsave("../output/Gut_Washout.pdf")
+
+CFU.rm <- lme(N_avg ~ Villi * Day, random = ~1 | Gut, correlation = corAR1(form = ~ 1 | Gut), data = na.omit(subset(CFU_data, CFU_data$Set == 1)))
+summary(CFU.rm)
+plot(CFU.rm)
+anova(CFU.rm)
 ```
+
 
 ```{r}
 Ecoli_data <- read.csv("../data/Villi_pilot/Ecoli_Villi_Mock.csv", header = TRUE)
