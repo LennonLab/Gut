@@ -1,0 +1,5 @@
+[1] "/N/project/Lennon_sequences/Guts/raw"
+character(0)
+character(0)
+character(0)
+list()

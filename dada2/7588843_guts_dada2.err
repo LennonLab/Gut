@@ -1,0 +1,7 @@
+Loading required package: Rcpp
+Identified 541 bimeras out of 593 input sequences.
+Error: Input/Output
+  no input files found
+  dirPath: /N/project/Lennon_sequences/Guts/silva_nr99_v138.2_toGenus_trainset.fa.gz
+  pattern: character(0)
+Execution halted

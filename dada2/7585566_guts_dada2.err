@@ -1,0 +1,4 @@
+Loading required package: Rcpp
+Error in filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen = c(240, 170),  : 
+  Every input file must have a corresponding output file.
+Execution halted
