@@ -1,0 +1,6 @@
+Loading required package: Rcpp
+Identified 541 bimeras out of 593 input sequences.
+Error in .Call2("fasta_index", filexp_list, nrec, skip, seek.first.rec,  : 
+  reading FASTA file /N/project/Lennon_Sequences/Guts/silva_nr99_v138.2_toGenus_trainset.fa.gz: ">" expected at beginning of line 1
+Calls: assignTaxonomy ... lapply -> FUN -> .read_XStringSet -> fasta.index -> .Call2
+Execution halted

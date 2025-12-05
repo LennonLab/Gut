@@ -1,0 +1,5 @@
+Loading required package: Rcpp
+Error in isBimeraDenovoTable(unqs[[i]], ..., verbose = verbose) : 
+  unused argument (multitread = FALSE)
+Calls: removeBimeraDenovo
+Execution halted
